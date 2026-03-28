@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from auth import hash_password
 from config import settings
@@ -39,9 +39,13 @@ async def create_default_admin():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    # Startup: create tables first, then apply migrations
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    async with engine.begin() as conn:
+        await conn.execute(text("ALTER TYPE tasktype ADD VALUE IF NOT EXISTS 'theory'"))
+    async with engine.begin() as conn:
+        await conn.execute(text("ALTER TYPE tasktype ADD VALUE IF NOT EXISTS 'ssh_lab'"))
     await create_default_admin()
 
     # Init GitLab client if configured

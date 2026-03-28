@@ -183,7 +183,7 @@ async def check_container(
 async def _get_ctf_task(task_id: int, db: AsyncSession) -> Task:
     result = await db.execute(select(Task).where(Task.id == task_id))
     task = result.scalar_one_or_none()
-    if not task or task.type != TaskType.ctf:
+    if not task or task.type not in (TaskType.ctf, TaskType.ssh_lab):
         raise HTTPException(status_code=404, detail="CTF task not found")
     return task
 

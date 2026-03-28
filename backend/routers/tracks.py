@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import get_current_user
 from database import get_db
-from models import Track, TrackStep, TaskSubmission, User
+from models import Track, TrackStep, TaskSubmission, TaskType, User
 from schemas import TrackOut, TrackDetail, TrackStepOut
 
 router = APIRouter(prefix="/api/tracks", tags=["tracks"], dependencies=[Depends(get_current_user)])
@@ -31,16 +32,21 @@ async def list_tracks(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Track).order_by(Track.order, Track.id))
+    result = await db.execute(
+        select(Track)
+        .options(selectinload(Track.steps).selectinload(TrackStep.task))
+        .order_by(Track.order, Track.id)
+    )
     tracks = result.scalars().all()
 
     statuses = await _get_user_statuses(user.id, db)
 
     out = []
     for track in tracks:
-        step_count = len(track.steps)
+        step_count = sum(1 for step in track.steps if step.task.type != TaskType.theory)
         completed_count = sum(
-            1 for step in track.steps if statuses.get(step.task_id) == "success"
+            1 for step in track.steps
+            if step.task.type != TaskType.theory and statuses.get(step.task_id) == "success"
         )
         out.append(
             TrackOut(
@@ -63,7 +69,11 @@ async def get_track(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Track).where(Track.id == track_id))
+    result = await db.execute(
+        select(Track)
+        .options(selectinload(Track.steps).selectinload(TrackStep.task))
+        .where(Track.id == track_id)
+    )
     track = result.scalar_one_or_none()
     if not track:
         raise HTTPException(status_code=404, detail="Track not found")
@@ -83,8 +93,8 @@ async def get_track(
         for step in track.steps
     ]
 
-    step_count = len(steps)
-    completed_count = sum(1 for s in steps if s.user_status == "success")
+    step_count = sum(1 for s in steps if s.task_type != TaskType.theory)
+    completed_count = sum(1 for s in steps if s.task_type != TaskType.theory and s.user_status == "success")
 
     return TrackDetail(
         id=track.id,

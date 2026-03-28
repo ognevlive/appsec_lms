@@ -19,6 +19,7 @@ async def seed_tasks(tasks_dir: str = "/tasks"):
     patterns = [
         os.path.join(tasks_dir, "quizzes", "*.yaml"),
         os.path.join(tasks_dir, "ctf", "*", "task.yaml"),
+        os.path.join(tasks_dir, "theory", "*.yaml"),
     ]
 
     files = []

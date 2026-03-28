@@ -28,6 +28,8 @@ class TaskType(str, enum.Enum):
     quiz = "quiz"
     ctf = "ctf"
     gitlab = "gitlab"
+    theory = "theory"
+    ssh_lab = "ssh_lab"
 
 
 class SubmissionStatus(str, enum.Enum):

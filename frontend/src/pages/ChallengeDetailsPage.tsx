@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import Breadcrumbs from '../components/Breadcrumbs';
 import PulseIndicator from '../components/PulseIndicator';
@@ -8,6 +8,9 @@ import Icon from '../components/Icon';
 import QuizSection from '../sections/QuizSection';
 import CtfSection from '../sections/CtfSection';
 import GitlabSection from '../sections/GitlabSection';
+import TheorySection from '../sections/TheorySection';
+import SshLabSection from '../sections/SshLabSection';
+import { Md, MdInline } from '../components/Md';
 import type { TaskDetail, Submission } from '../types';
 
 export default function ChallengeDetailsPage() {
@@ -60,10 +63,21 @@ export default function ChallengeDetailsPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <PulseIndicator color={hasSuccess ? 'primary' : 'secondary'} />
-            <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
-              {hasSuccess ? 'Задание пройдено' : 'Активное задание'}
-            </span>
+            {task.type === 'theory' ? (
+              <>
+                <Icon name="menu_book" size="sm" className="text-amber-400" />
+                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">
+                  Теоретический материал
+                </span>
+              </>
+            ) : (
+              <>
+                <PulseIndicator color={hasSuccess ? 'primary' : 'secondary'} />
+                <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                  {hasSuccess ? 'Задание пройдено' : 'Активное задание'}
+                </span>
+              </>
+            )}
           </div>
           <h1 className="text-4xl md:text-6xl font-headline font-bold tracking-tighter leading-none">
             {task.title}
@@ -84,14 +98,10 @@ export default function ChallengeDetailsPage() {
               <Icon name="description" size="sm" />
               Описание задания
             </h3>
-            <div className="space-y-4 text-on-surface/80 leading-relaxed">
-              {task.description.split('\n').map((p, i) => (
-                <p key={i}>{p}</p>
-              ))}
-            </div>
+            <Md className="space-y-0">{task.description}</Md>
 
             {/* Technical requirements if in config */}
-            {task.config?.requirements && (
+            {task.type !== 'theory' && task.config?.requirements && (
               <div className="mt-10">
                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-4">
                   Техническое задание
@@ -100,7 +110,7 @@ export default function ChallengeDetailsPage() {
                   {(task.config.requirements as string[]).map((req, i) => (
                     <li key={i} className="flex items-start gap-3">
                       <Icon name="check_circle" size="sm" className="text-primary mt-0.5" />
-                      <span>{req}</span>
+                      <span><MdInline>{req}</MdInline></span>
                     </li>
                   ))}
                 </ul>
@@ -117,6 +127,12 @@ export default function ChallengeDetailsPage() {
           )}
           {task.type === 'gitlab' && (
             <GitlabSection taskId={taskId} />
+          )}
+          {task.type === 'theory' && (
+            <TheorySection content={task.config?.content || ''} />
+          )}
+          {task.type === 'ssh_lab' && (
+            <SshLabSection taskId={taskId} config={task.config} onSubmit={refreshSubmissions} />
           )}
         </div>
 
@@ -145,15 +161,17 @@ export default function ChallengeDetailsPage() {
                   Тип
                 </span>
                 <span className="text-sm font-bold uppercase text-secondary">
-                  {task.type === 'quiz' ? 'Тест' : task.type === 'ctf' ? 'CTF' : 'GitLab'}
+                  {task.type === 'quiz' ? 'Тест' : task.type === 'ctf' ? 'CTF' : task.type === 'ssh_lab' ? 'SSH Lab' : task.type === 'gitlab' ? 'GitLab' : 'Теория'}
                 </span>
               </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">
-                  Попыток
-                </span>
-                <span className="text-sm">{submissions.length}</span>
-              </div>
+              {task.type !== 'theory' && (
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">
+                    Попыток
+                  </span>
+                  <span className="text-sm">{submissions.length}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -175,6 +193,28 @@ export default function ChallengeDetailsPage() {
                     <Icon name="link" size="sm" />
                     {m.title}
                   </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Theory References */}
+          {task.theory_refs && task.theory_refs.length > 0 && (
+            <div className="bg-surface-container-low p-6 border border-outline-variant/10">
+              <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-on-surface-variant mb-4 flex items-center gap-2">
+                <Icon name="menu_book" size="sm" />
+                Теория
+              </h3>
+              <div className="space-y-3">
+                {task.theory_refs.map((ref) => (
+                  <Link
+                    key={ref.id}
+                    to={`/challenges/${ref.id}`}
+                    className="flex items-center gap-2 text-sm text-secondary hover:text-primary transition-colors"
+                  >
+                    <Icon name="auto_stories" size="sm" />
+                    {ref.title}
+                  </Link>
                 ))}
               </div>
             </div>

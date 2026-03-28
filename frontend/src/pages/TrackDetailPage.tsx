@@ -7,6 +7,7 @@ const TYPE_LABELS: Record<string, string> = {
   quiz: 'ТЕСТ',
   ctf: 'ЛАБ',
   gitlab: 'GITLAB',
+  theory: 'ТЕОРИЯ',
 };
 
 const DIFFICULTY_LABELS: Record<string, string> = {
@@ -18,19 +19,31 @@ const DIFFICULTY_LABELS: Record<string, string> = {
 
 function StepRow({ step, index }: { step: TrackStepItem; index: number }) {
   const navigate = useNavigate();
-  const isDone = step.user_status === 'success';
-  const isFail = step.user_status === 'fail';
+  const isTheory = step.task_type === 'theory';
+  const isDone = !isTheory && step.user_status === 'success';
+  const isFail = !isTheory && step.user_status === 'fail';
   const typeLabel = TYPE_LABELS[step.task_type] || step.task_type.toUpperCase();
 
   return (
     <button
       onClick={() => navigate(`/challenges/${step.task_id}`)}
-      className="w-full text-left flex items-center gap-4 px-5 py-4 border border-outline-variant/15 hover:border-primary/40 hover:bg-surface-container transition-all duration-150 group bg-surface-container-low"
+      className={`w-full text-left flex items-center gap-4 px-5 py-4 border transition-all duration-150 group
+        ${isTheory
+          ? 'border-amber-500/15 hover:border-amber-500/40 hover:bg-surface-container bg-surface-container-low/60'
+          : 'border-outline-variant/15 hover:border-primary/40 hover:bg-surface-container bg-surface-container-low'
+        }`}
     >
-      {/* Step number */}
+      {/* Step number / theory icon */}
       <div className={`w-8 h-8 flex-shrink-0 flex items-center justify-center border text-xs font-mono font-bold
-        ${isDone ? 'border-primary bg-primary/10 text-primary' : 'border-outline-variant/30 text-on-surface-variant'}`}>
-        {isDone ? (
+        ${isTheory
+          ? 'border-amber-500/30 text-amber-400'
+          : isDone
+            ? 'border-primary bg-primary/10 text-primary'
+            : 'border-outline-variant/30 text-on-surface-variant'
+        }`}>
+        {isTheory ? (
+          <span className="material-symbols-outlined text-base">menu_book</span>
+        ) : isDone ? (
           <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
         ) : (
           String(index + 1).padStart(2, '0')
@@ -39,36 +52,45 @@ function StepRow({ step, index }: { step: TrackStepItem; index: number }) {
 
       {/* Type badge */}
       <span className={`flex-shrink-0 text-[9px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 border
-        ${step.task_type === 'quiz'
-          ? 'border-blue-500/40 text-blue-400 bg-blue-500/5'
-          : 'border-primary/40 text-primary bg-primary/5'}`}>
+        ${isTheory
+          ? 'border-amber-500/40 text-amber-400 bg-amber-500/5'
+          : step.task_type === 'quiz'
+            ? 'border-blue-500/40 text-blue-400 bg-blue-500/5'
+            : 'border-primary/40 text-primary bg-primary/5'
+        }`}>
         {typeLabel}
       </span>
 
       {/* Title */}
-      <span className="flex-1 font-body font-medium text-sm text-on-surface group-hover:text-primary transition-colors truncate">
+      <span className={`flex-1 font-body font-medium text-sm truncate transition-colors
+        ${isTheory
+          ? 'text-on-surface-variant group-hover:text-amber-400'
+          : 'text-on-surface group-hover:text-primary'
+        }`}>
         {step.task_title}
       </span>
 
-      {/* Difficulty */}
-      {step.task_difficulty && (
+      {/* Difficulty — hidden for theory */}
+      {!isTheory && step.task_difficulty && (
         <span className="flex-shrink-0 text-[10px] font-mono text-on-surface-variant hidden sm:block">
           {DIFFICULTY_LABELS[step.task_difficulty] || step.task_difficulty}
         </span>
       )}
 
-      {/* Status */}
-      <div className="flex-shrink-0 w-20 text-right">
-        {isDone && (
-          <span className="text-[10px] font-mono uppercase tracking-widest text-primary">Выполнено</span>
-        )}
-        {isFail && (
-          <span className="text-[10px] font-mono uppercase tracking-widest text-error">Неверно</span>
-        )}
-        {!isDone && !isFail && (
-          <span className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant">—</span>
-        )}
-      </div>
+      {/* Status — hidden for theory */}
+      {!isTheory && (
+        <div className="flex-shrink-0 w-20 text-right">
+          {isDone && (
+            <span className="text-[10px] font-mono uppercase tracking-widest text-primary">Выполнено</span>
+          )}
+          {isFail && (
+            <span className="text-[10px] font-mono uppercase tracking-widest text-error">Неверно</span>
+          )}
+          {!isDone && !isFail && (
+            <span className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant">—</span>
+          )}
+        </div>
+      )}
 
       {/* Arrow */}
       <span className="material-symbols-outlined text-on-surface-variant text-base flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -148,9 +170,13 @@ export default function TrackDetailPage() {
 
       {/* Steps */}
       <div className="space-y-2">
-        {track.steps.map((step, index) => (
-          <StepRow key={step.id} step={step} index={index} />
-        ))}
+        {(() => {
+          let taskIndex = 0;
+          return track.steps.map((step) => {
+            const displayIndex = step.task_type === 'theory' ? -1 : taskIndex++;
+            return <StepRow key={step.id} step={step} index={displayIndex} />;
+          });
+        })()}
       </div>
 
       {track.steps.length === 0 && (

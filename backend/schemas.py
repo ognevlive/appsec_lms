@@ -47,8 +47,14 @@ class TaskOut(BaseModel):
         from_attributes = True
 
 
+class TheoryRef(BaseModel):
+    id: int
+    title: str
+
+
 class TaskDetail(TaskOut):
     config: dict
+    theory_refs: list[TheoryRef] = []
 
 
 class TaskCatalogOut(TaskOut):

@@ -2,26 +2,24 @@ import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
-import type { ContainerInfo, CheckResponse } from '../types';
+import type { ContainerInfo } from '../types';
 
-interface CtfSectionProps {
+interface SshLabSectionProps {
   taskId: number;
   config: Record<string, any>;
   onSubmit: () => void;
 }
 
-export default function CtfSection({ taskId, config, onSubmit }: CtfSectionProps) {
+export default function SshLabSection({ taskId, config, onSubmit }: SshLabSectionProps) {
   const [container, setContainer] = useState<ContainerInfo | null>(null);
   const [flag, setFlag] = useState('');
   const [flagResult, setFlagResult] = useState<'correct' | 'wrong' | null>(null);
-  const [checks, setChecks] = useState<CheckResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [terminalReady, setTerminalReady] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
 
   const hasFlag = !!config?.flag_hash;
-  const hasChecks = (config?.checks?.length || 0) > 0;
 
   useEffect(() => {
     api.ctfStatus(taskId).then((info) => {
@@ -37,7 +35,6 @@ export default function CtfSection({ taskId, config, onSubmit }: CtfSectionProps
     try {
       const info = await api.startCtf(taskId);
       setContainer(info);
-      // Give the container ~3s to start ttyd before showing the terminal
       setTimeout(() => setTerminalReady(true), 3000);
     } catch (err: any) {
       setError(err.message);
@@ -55,6 +52,7 @@ export default function CtfSection({ taskId, config, onSubmit }: CtfSectionProps
       await api.stopCtf(taskId);
       setContainer(null);
       setTerminalReady(false);
+      setFlagResult(null);
     } catch (err: any) {
       setError(err.message);
     }
@@ -74,27 +72,13 @@ export default function CtfSection({ taskId, config, onSubmit }: CtfSectionProps
     }
   };
 
-  const runChecks = async () => {
-    setLoading(true);
-    setChecks(null);
-    setError('');
-    try {
-      const res = await api.checkContainer(taskId);
-      setChecks(res);
-      if (res.all_passed) onSubmit();
-    } catch (err: any) {
-      setError(err.message);
-    }
-    setLoading(false);
-  };
-
   return (
     <>
       {/* Container Control */}
       <section className="bg-surface-container-low p-6">
         <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-primary mb-4 flex items-center gap-2">
-          <Icon name="dns" size="sm" />
-          Контейнер
+          <Icon name="terminal" size="sm" />
+          Лаборатория
         </h3>
         {container ? (
           <div className="space-y-4">
@@ -102,7 +86,7 @@ export default function CtfSection({ taskId, config, onSubmit }: CtfSectionProps
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_#8eff71]" />
-                <span className="text-xs uppercase text-primary font-bold tracking-widest">Запущен</span>
+                <span className="text-xs uppercase text-primary font-bold tracking-widest">Запущено</span>
                 <span className="text-[10px] text-on-surface-variant font-mono">
                   до {new Date(container.expires_at).toLocaleString('ru-RU')}
                 </span>
@@ -149,9 +133,15 @@ export default function CtfSection({ taskId, config, onSubmit }: CtfSectionProps
             </div>
           </div>
         ) : (
-          <Button onClick={startContainer} disabled={loading} size="lg" className="w-full">
-            {loading ? 'Запуск...' : 'Запустить контейнер'}
-          </Button>
+          <div className="space-y-4">
+            <p className="text-sm text-on-surface-variant">
+              Запустите контейнер чтобы получить доступ к терминалу с предустановленными инструментами.
+            </p>
+            <Button onClick={startContainer} disabled={loading} size="lg" className="w-full">
+              <Icon name="play_arrow" size="sm" className="mr-2" />
+              {loading ? 'Запуск...' : 'Запустить лабораторию'}
+            </Button>
+          </div>
         )}
       </section>
 
@@ -162,10 +152,14 @@ export default function CtfSection({ taskId, config, onSubmit }: CtfSectionProps
             <Icon name="flag" size="sm" />
             Отправить флаг
           </h3>
+          <p className="text-xs text-on-surface-variant mb-4">
+            Выполните задание в терминале и введите полученный флаг.
+          </p>
           <div className="flex gap-3">
             <input
               value={flag}
               onChange={(e) => setFlag(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submitFlag()}
               placeholder="FLAG{...}"
               className="flex-1 h-12 bg-surface-container-lowest border border-outline-variant/30 text-sm text-on-surface focus:border-primary focus:ring-0 focus:outline-none px-4 font-mono placeholder:text-outline-variant"
             />
@@ -182,43 +176,6 @@ export default function CtfSection({ taskId, config, onSubmit }: CtfSectionProps
           {flagResult === 'wrong' && (
             <div className="mt-3 bg-tertiary/10 border border-tertiary/20 px-4 py-2 text-tertiary text-sm">
               Неверный флаг
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Auto-checks */}
-      {container && hasChecks && (
-        <section className="bg-surface-container-low p-6">
-          <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-primary mb-4 flex items-center gap-2">
-            <Icon name="verified" size="sm" />
-            Автопроверка
-          </h3>
-          <Button onClick={runChecks} disabled={loading} variant="secondary" className="mb-4">
-            {loading ? 'Проверка...' : 'Запустить проверку'}
-          </Button>
-
-          {checks && (
-            <div className="space-y-2">
-              {checks.results.map((c, i) => (
-                <div
-                  key={i}
-                  className={`flex items-center gap-3 px-4 py-3 text-sm ${
-                    c.passed ? 'bg-primary/5 text-primary' : 'bg-tertiary/5 text-tertiary'
-                  }`}
-                >
-                  <Icon name={c.passed ? 'check_circle' : 'cancel'} size="sm" filled />
-                  <span className="font-medium">{c.name}</span>
-                  {!c.passed && c.message && (
-                    <span className="text-on-surface-variant text-xs ml-auto">{c.message}</span>
-                  )}
-                </div>
-              ))}
-              {checks.all_passed && (
-                <div className="bg-primary/10 border border-primary/20 px-4 py-3 text-primary font-bold text-sm mt-2">
-                  Все проверки пройдены!
-                </div>
-              )}
             </div>
           )}
         </section>

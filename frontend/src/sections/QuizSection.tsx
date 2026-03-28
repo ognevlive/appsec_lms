@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
+import { Md, MdInline } from '../components/Md';
 import type { QuizQuestion, QuizResult } from '../types';
 
 interface QuizSectionProps {
@@ -45,12 +46,12 @@ export default function QuizSection({ taskId, onSubmit }: QuizSectionProps) {
         const isWrong = result?.wrong.includes(q.id);
         return (
           <section key={q.id} className="bg-surface-container-low p-6">
-            <h4 className="text-sm font-bold text-on-surface mb-4 flex items-center gap-2">
-              <span className="text-on-surface-variant font-mono text-xs">{q.id}.</span>
-              {q.text}
-              {isCorrect && <Icon name="check_circle" size="sm" className="text-primary" filled />}
-              {isWrong && <Icon name="cancel" size="sm" className="text-tertiary" filled />}
-            </h4>
+            <div className="text-sm font-bold text-on-surface mb-4 flex items-start gap-2">
+              <span className="text-on-surface-variant font-mono text-xs mt-0.5 flex-shrink-0">{q.id}.</span>
+              <span className="flex-1"><MdInline>{q.text}</MdInline></span>
+              {isCorrect && <Icon name="check_circle" size="sm" className="text-primary flex-shrink-0" filled />}
+              {isWrong && <Icon name="cancel" size="sm" className="text-tertiary flex-shrink-0" filled />}
+            </div>
             <div className="space-y-2">
               {q.options.map((opt) => {
                 const selected = answers[String(q.id)] === opt;
@@ -64,7 +65,7 @@ export default function QuizSection({ taskId, onSubmit }: QuizSectionProps) {
                         : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant hover:text-on-surface'
                     } ${result ? 'cursor-default' : 'cursor-pointer'}`}
                   >
-                    {opt}
+                    <MdInline>{opt}</MdInline>
                   </button>
                 );
               })}

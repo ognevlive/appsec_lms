@@ -14,6 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 TASKS_DIR="$ROOT_DIR/tasks"
 CTF_DIR="$TASKS_DIR/ctf"
+STITCH_DIR="$ROOT_DIR/stitch"
 
 # Colors
 GREEN='\033[0;32m'
@@ -80,17 +81,33 @@ build_images() {
     local built=0
     local failed=0
 
+    # Build from stitch/ (primary source), fall back to tasks/ctf/ for legacy labs
+    local all_names=()
+    for dir in "$STITCH_DIR"/*/; do
+        [ -d "$dir" ] && [[ "$(basename $dir)" != *.* ]] && all_names+=("$(basename $dir)")
+    done
     for dir in "$CTF_DIR"/*/; do
         [ -d "$dir" ] || continue
         name=$(basename "$dir")
-        dockerfile="$dir/Dockerfile"
+        # Skip if already in stitch
+        [[ " ${all_names[*]} " =~ " $name " ]] || all_names+=("$name")
+    done
 
-        [ -f "$dockerfile" ] || { warn "$name: no Dockerfile, skipping build"; continue; }
+    for name in "${all_names[@]}"; do
+        # Prefer stitch/ build context
+        build_dir=""
+        [ -f "$STITCH_DIR/$name/Dockerfile" ] && build_dir="$STITCH_DIR/$name"
+        [ -z "$build_dir" ] && [ -f "$CTF_DIR/$name/Dockerfile" ] && build_dir="$CTF_DIR/$name"
+
+        if [ -z "$build_dir" ]; then
+            warn "$name: no Dockerfile found in stitch/ or tasks/ctf/, skipping"
+            continue
+        fi
 
         image_name="lms/$name"
-        info "Building $image_name ..."
+        info "Building $image_name (from $build_dir)..."
 
-        if docker build -t "$image_name" "$dir" --quiet 2>&1; then
+        if docker build -t "$image_name" "$build_dir" --quiet 2>&1; then
             log "$image_name built successfully"
             ((built++))
         else
@@ -209,7 +226,7 @@ main() {
             ;;
         all|"")
             compute_flag_hashes
-            build_images
+            build_images || warn "Some images failed to build, continuing with seed..."
             seed_database
             print_summary
             ;;
