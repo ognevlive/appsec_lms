@@ -1,0 +1,18 @@
+title: "SAST: Уязвимый код"
+description: |
+  Вам дан исходный код Python-приложения с несколькими уязвимостями.
+  Проведите ручной code review или используйте инструменты SAST (`bandit`, `semgrep`)
+  для нахождения всех уязвимостей.
+
+  Для каждой найденной уязвимости укажите тип (CWE) в форме ответа.
+  Флаг складывается из правильного количества найденных уязвимостей.
+type: ctf
+order: 9
+config:
+  difficulty: medium
+  tags: [sast, code-review, appsec]
+  max_points: 250
+  docker_image: lms/sast-vulnerable-app
+  container_port: 80
+  ttl_minutes: 120
+  flag_hash: "c0523c99e3e088c730ae90515957951046573af1d1ed77d689053a1eb0b1d6df"

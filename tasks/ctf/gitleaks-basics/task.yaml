@@ -1,0 +1,29 @@
+title: "Lab 3: Gitleaks — первый запуск"
+description: |
+  Репозиторий `/lab/repo` содержит 14 секретов разных типов:
+  AWS access key, GitHub personal token, JWT secret, Stripe key,
+  Slack webhook, пароли в конфигах и другие.
+
+  Установи и запусти `gitleaks` против репозитория.
+  Разберись с форматом вывода. Найди все утечки.
+
+  Флаг появится автоматически после команды:
+    `gitleaks detect --source /lab/repo --report-format json \`
+      `--report-path /lab/report.json && cat /lab/flag.txt`
+
+  Скрипт `/lab/check.sh` проверяет корректность и выводит флаг.
+
+  Команды для старта:
+  - `gitleaks version`
+  - `gitleaks detect --source /lab/repo`
+  - `gitleaks detect --source /lab/repo --verbose`
+type: ssh_lab
+order: 42
+config:
+  difficulty: low
+  tags: [secrets, gitleaks, detection, tools]
+  max_points: 150
+  docker_image: lms/gitleaks-basics
+  container_port: 80
+  ttl_minutes: 120
+  flag_hash: "2d49009ad40752720d9ad8317d5e95cebd5d1c757b30578848678abfe001f32b"

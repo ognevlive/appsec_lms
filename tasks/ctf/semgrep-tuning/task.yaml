@@ -1,0 +1,31 @@
+title: "Lab 11: Semgrep — снижение шума"
+description: |
+  Приложение в `/lab/noisy-app/` при запуске `semgrep --config=auto`
+  генерирует 50+ findings, большинство из которых — false positives.
+
+  Задача: снизить до ≤ 5 реальных, значимых findings.
+
+  Способы:
+  1. Создай `/lab/noisy-app/.semgrepignore` — исключи тесты, вендор-код
+  2. Используй `--severity ERROR` чтобы фокусироваться на критичном
+  3. Создай `/lab/noisy-app/semgrep.yaml` с правилами исключений
+
+  Когда достигнешь ≤ 5 findings при запуске:
+    `semgrep --config=auto /lab/noisy-app/ 2>&1 | tail -5`
+
+  Запусти `/lab/check.sh` для получения флага.
+
+  Подсказки:
+  - `semgrep --config=auto --severity ERROR`
+  - `echo "tests/" >> .semgrepignore`
+  - `semgrep --help | grep severity`
+type: ssh_lab
+order: 50
+config:
+  difficulty: medium
+  tags: [sast, semgrep, tuning, false-positives, configuration]
+  max_points: 200
+  docker_image: lms/semgrep-tuning
+  container_port: 80
+  ttl_minutes: 120
+  flag_hash: "fde3555ab6f13faaa8984b44b09ccee6028a3d56e71a8a3d55c5234e927e60ad"

@@ -1,0 +1,56 @@
+title: "Production DevSecOps: Pipeline, политики и зрелость"
+description: |
+  Построение production-ready DevSecOps процессов требует понимания
+  зрелостных моделей, политики как кода и правильного встраивания
+  инструментов в жизненный цикл разработки.
+type: quiz
+order: 37
+config:
+  difficulty: high
+  tags: [devsecops, ci-cd, policy-as-code, shift-left, pipeline]
+  max_points: 200
+  questions:
+    - id: 1
+      text: "Что означает концепция 'shift-left security'?"
+      options:
+        - "Перенос проверок безопасности на более ранние этапы SDLC — к разработчикам"
+        - "Использование левостороннего синтаксиса в конфигурационных файлах"
+        - "Переход с waterfall на agile разработку"
+        - "Смещение ответственности за безопасность от DevOps к Security-команде"
+      correct_answer: "Перенос проверок безопасности на более ранние этапы SDLC — к разработчикам"
+
+    - id: 2
+      text: "На каком этапе CI/CD должен запускаться secrets scanning?"
+      options:
+        - "На pre-commit хуке у разработчика И в CI pipeline при каждом `push`"
+        - "Только в CI pipeline перед деплоем"
+        - "Только на production ветке (`main`/`master`)"
+        - "Раз в неделю по расписанию"
+      correct_answer: "На pre-commit хуке у разработчика И в CI pipeline при каждом `push`"
+
+    - id: 3
+      text: "Что такое security gate в CI/CD?"
+      options:
+        - "Условие, при котором pipeline блокирует merge/деплой при нарушении политик безопасности"
+        - "Отдельный сервис для аудита всех API-запросов"
+        - "Firewall между dev и prod окружениями"
+        - "Обязательный code review от security-инженера"
+      correct_answer: "Условие, при котором pipeline блокирует merge/деплой при нарушении политик безопасности"
+
+    - id: 4
+      text: "Что такое SARIF (Static Analysis Results Interchange Format)?"
+      options:
+        - "Стандартный JSON-формат для представления результатов SAST инструментов"
+        - "Протокол обмена данными между SAST инструментами и IDE"
+        - "Формат хранения правил Semgrep"
+        - "Стандарт для описания CVE"
+      correct_answer: "Стандартный JSON-формат для представления результатов SAST инструментов"
+
+    - id: 5
+      text: "Какой CVSS порог рекомендуется использовать для блокировки CI/CD при сканировании зависимостей?"
+      options:
+        - "≥ 7.0 (High) или ≥ 8.0 (зависит от профиля риска организации)"
+        - "Любое ненулевое значение"
+        - "≥ 9.0 (только Critical)"
+        - "≥ 4.0 (Medium и выше)"
+      correct_answer: "≥ 7.0 (High) или ≥ 8.0 (зависит от профиля риска организации)"

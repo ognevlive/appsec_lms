@@ -1,0 +1,35 @@
+title: "Linux Hardening"
+description: |
+  Вам выдан сервер с небезопасной конфигурацией.
+  Необходимо выполнить базовое укрепление безопасности:
+  — отключить `root`-логин по SSH
+  — включить firewall
+  — удалить пользователя `admin`
+  — исправить права на `/etc/shadow`
+type: ctf
+order: 3
+config:
+  difficulty: medium
+  tags: [linux, hardening, ops-sec]
+  max_points: 200
+  docker_image: lms/hardening-linux
+  container_port: 22
+  ttl_minutes: 120
+  checks:
+    - name: "SSH root login отключён"
+      type: file_contains
+      path: /etc/ssh/sshd_config
+      expected: "PermitRootLogin no"
+
+    - name: "Firewall включён"
+      type: command
+      cmd: "ufw status | grep -q 'Status: active'"
+
+    - name: "Пользователь admin удалён"
+      type: command
+      cmd: "! id admin 2>/dev/null"
+
+    - name: "Права на /etc/shadow корректны"
+      type: file_permissions
+      path: /etc/shadow
+      expected: "640"

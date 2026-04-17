@@ -1,0 +1,32 @@
+title: "Lab 5: detect-secrets — baseline и pre-commit"
+description: |
+  В `/lab/repo` уже есть существующий код с несколькими "ложными" секретами
+  (тестовые данные, примеры в документации). Задача:
+
+  1. Создай baseline существующих находок:
+       `detect-secrets scan > .secrets.baseline`
+
+  2. Настрой pre-commit хук (`/lab/repo/.git/hooks/pre-commit`)
+     чтобы он запускал `detect-secrets` перед каждым коммитом
+
+  3. Убедись что хук блокирует коммит нового реального секрета:
+       `echo 'API_KEY=ghp_realTokenHere123' >> /lab/repo/config.py`
+       `cd /lab/repo && git add . && git commit -m "test"`
+     — коммит должен быть заблокирован
+
+  Флаг появится после запуска `/lab/check.sh`
+
+  Подсказки:
+  - `pip show detect-secrets`
+  - `detect-secrets scan --help`
+  - `detect-secrets audit .secrets.baseline`
+type: ssh_lab
+order: 44
+config:
+  difficulty: medium
+  tags: [secrets, detect-secrets, pre-commit, baseline, tools]
+  max_points: 200
+  docker_image: lms/detect-secrets-baseline
+  container_port: 80
+  ttl_minutes: 120
+  flag_hash: "ccff97b5791054b9fe3e43827a1b8f2670ba27c8c56f522e3181db7d8e27739d"

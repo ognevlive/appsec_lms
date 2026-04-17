@@ -1,0 +1,11 @@
+title: "XSS: От теории к практике"
+slug: "xss-track"
+description: "Изучите межсайтовый скриптинг — от базовых концепций до практической эксплуатации. Сначала тест на знание теории, затем реальная CTF-лаба."
+order: 1
+config:
+  icon: "code"
+steps:
+  - task_title: "Cross-Site Scripting: Основы"
+    order: 1
+  - task_title: "XSS Stored: Кража Cookie"
+    order: 2

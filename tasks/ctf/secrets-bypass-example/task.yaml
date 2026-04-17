@@ -1,0 +1,29 @@
+title: "Lab 8: Обфусцированные секреты — найди все три"
+description: |
+  Репозиторий `/lab/repo` содержит 3 секрета, намеренно скрытых от
+  стандартных сканеров. Найди их любым способом:
+
+  Секрет 1: закодирован в Base64 в переменной конфига
+  Секрет 2: разбит на части в нескольких переменных (split secret)
+  Секрет 3: закодирован в hex и собирается в рантайме
+
+  Цель не просто найти, но и понять — какие улучшения правил
+  помогли бы их обнаружить автоматически.
+
+  Запусти `/lab/check.sh <secret1> <secret2> <secret3>`
+
+  Подсказки:
+  - `grep -r "base64\|decode\|encode" /lab/repo`
+  - `python3 -c "import base64; print(base64.b64decode('<string>'))"`
+  - `grep -r "concat\|join\|+\|f'" /lab/repo`
+  - `python3 /lab/repo/app.py`  (посмотри что собирается в рантайме)
+type: ctf
+order: 47
+config:
+  difficulty: medium
+  tags: [secrets, bypass, obfuscation, base64, appsec]
+  max_points: 200
+  docker_image: lms/secrets-bypass-example
+  container_port: 80
+  ttl_minutes: 120
+  flag_hash: "9115a4747b32e41e26f3d6c36300103ee90d9c9ab53d3a92805d51fc90594de9"

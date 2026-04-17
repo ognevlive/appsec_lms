@@ -1,0 +1,32 @@
+title: "Lab 22: Security Gates и SARIF-отчёты"
+description: |
+  В `/lab/repo` — уже работающий pipeline с избыточными findings (25+).
+  Слишком много шума — разработчики игнорируют алерты.
+
+  Задача:
+  1. Настрой severity thresholds: блокировать только `ERROR`, игнорировать `WARNING`
+  2. Добавь upload SARIF-артефакта в workflow
+  3. Настрой уведомление (запись в `/lab/notifications.log`) при нахождении `ERROR`
+  4. Финальный pipeline должен генерировать SARIF с ровно 7 findings (ERROR уровень)
+
+  Запусти `/lab/run_pipeline.sh` — симулирует выполнение pipeline.
+  `/lab/check.sh` верифицирует SARIF и выдаст флаг.
+
+  Структура SARIF:
+  - Используй: `semgrep --config=.semgrep/ --severity ERROR \`
+      `--sarif --output results.sarif src/`
+
+  Подсказки:
+  - `semgrep --config .semgrep/ --severity ERROR --sarif --output /lab/results.sarif /lab/src/`
+  - `jq '.runs[].results | length' /lab/results.sarif`  # должно быть 7
+  - `cat /lab/run_pipeline.sh`  (посмотри как симулируется pipeline)
+type: ssh_lab
+order: 61
+config:
+  difficulty: high
+  tags: [devsecops, sarif, security-gates, semgrep, metrics, pipeline]
+  max_points: 300
+  docker_image: lms/security-gates-metrics
+  container_port: 80
+  ttl_minutes: 120
+  flag_hash: "ef4919421df49584c57853f953dff18cb05d3053047ca85a1330c0d2ee144701"

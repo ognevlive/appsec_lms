@@ -1,0 +1,36 @@
+title: "Lab 13: Semgrep — Taint Analysis"
+description: |
+  Приложение `/lab/app/` содержит SQL injection через цепочку функций:
+  `request.args['id']`  →  `sanitize(x)`  →  `transform(x)`  →  `db.query(x)`
+
+  `sanitize()` не является надёжным sanitizer'ом (только `strip()`).
+  Стандартные pattern-правила не находят этот путь.
+
+  Напиши taint-tracking правило в `/lab/rules/taint.yaml`:
+  ```yaml
+    mode: taint
+    pattern-sources: ...
+    pattern-sinks: ...
+    pattern-sanitizers: ...  (опционально)
+  ```
+
+  Правило должно найти все 5 taint-путей в приложении.
+
+  Запусти: `semgrep --config=/lab/rules/taint.yaml /lab/app/`
+  `/lab/check.sh` верифицирует и выдаст флаг.
+
+  Подсказки:
+  - Semgrep docs: `mode: taint`
+  - `pattern-sources: [pattern: request.args[...]]`
+  - `pattern-sinks: [pattern: db.execute(...)]`
+  - Проверь все файлы в `/lab/app/routes/`
+type: ssh_lab
+order: 52
+config:
+  difficulty: high
+  tags: [sast, semgrep, taint-analysis, sqli, appsec]
+  max_points: 300
+  docker_image: lms/semgrep-taint
+  container_port: 80
+  ttl_minutes: 120
+  flag_hash: "8afe40922b6f9a649929892d508028b37a79bfcb21c557e96e99d2ef85d68bc3"

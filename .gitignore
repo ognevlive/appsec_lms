@@ -23,7 +23,7 @@ postgres_data/
 Thumbs.db
 
 # CTF tasks (contain real flags — distribute separately)
-tasks/
+#tasks/
 
 # Design mockups
 stitch/

@@ -1,0 +1,32 @@
+title: "Lab 14: Semgrep в CI/CD с кастомным ruleset"
+description: |
+  В `/lab/repo` есть Gitea с репозиторием. Кастомные Semgrep-правила
+  находятся в папке `.semgrep/`. Задача:
+
+  1. Настрой `.gitea/workflows/sast.yml` с Semgrep job
+  2. Job должен запускать ТОЛЬКО правила из `.semgrep/` (не `auto`)
+  3. Pipeline блокирует merge при нахождении `ERROR`-уязвимостей
+  4. Pipeline проходит на коде без нарушений
+
+  Gitea: `http://localhost:3000` (`student` / `lab_password`)
+
+  Тест: в репозитории есть 2 ветки:
+  - `clean-code` — должна проходить CI
+  - `vuln-code` — должна блокироваться CI
+
+  `/lab/check.sh` верифицирует конфигурацию обеих веток.
+
+  Подсказки:
+  - `semgrep --config .semgrep/ src/`
+  - `semgrep --error` (возвращает exit code `1` при findings)
+  - Gitea Actions: artifact upload для SARIF
+type: ssh_lab
+order: 53
+config:
+  difficulty: high
+  tags: [sast, semgrep, ci-cd, pipeline, custom-rules, gitea]
+  max_points: 300
+  docker_image: lms/semgrep-ci-custom
+  container_port: 80
+  ttl_minutes: 180
+  flag_hash: "a24f706447d4171ba4ef1b08f2535e25dacbdea6b157560a61ca572486a26a2d"

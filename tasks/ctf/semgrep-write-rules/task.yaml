@@ -1,0 +1,34 @@
+title: "Lab 12: Semgrep — пишем кастомные правила"
+description: |
+  Приложение в `/lab/app/` использует небезопасные internal helpers:
+  - `db.raw_query(user_input)`   — прямой SQL без параметризации
+  - `auth.bypass_check(reason)`  — опасный обход проверки прав
+  - `log.unsafe_format(msg)`     — format string через user input
+
+  Дефолтные правила Semgrep их не находят.
+  Напиши 3 правила в `/lab/rules/custom.yaml`:
+
+  ```yaml
+  rules:
+    - id: raw-query-injection
+      pattern: db.raw_query(...)
+      message: "Опасный вызов raw_query — используй параметризованные запросы"
+      languages: [python]
+      severity: ERROR
+    ...
+  ```
+
+  Запусти: `semgrep --config=/lab/rules/custom.yaml /lab/app/`
+  Правила должны найти все 9 инстанций (по 3 на каждый паттерн).
+
+  `/lab/check.sh` верифицирует результат и выдаст флаг.
+type: ssh_lab
+order: 51
+config:
+  difficulty: high
+  tags: [sast, semgrep, custom-rules, appsec, tools]
+  max_points: 250
+  docker_image: lms/semgrep-write-rules
+  container_port: 80
+  ttl_minutes: 120
+  flag_hash: "46afcc89c1931edd1c5fa2cb50dbd16b357003d10c804c5d90c4b2d47aa650cd"

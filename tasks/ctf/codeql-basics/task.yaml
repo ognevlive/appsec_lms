@@ -1,0 +1,33 @@
+title: "Lab 16: CodeQL — глубокий анализ"
+description: |
+  Python-приложение `/lab/app/` содержит SSRF-уязвимость через цепочку
+  из 4 функций. `semgrep` её НЕ находит (проверь: `semgrep --config=auto /lab/app/`).
+  CodeQL с dataflow-анализом — находит.
+
+  Задача:
+  1. Создай CodeQL database:
+       `codeql database create /lab/codeql-db --language=python \`
+         `--source-root=/lab/app`
+
+  2. Запусти built-in query пакет для Python:
+       `codeql database analyze /lab/codeql-db \`
+         `python-security-and-quality.qls \`
+         `--format=sarif-latest --output=/lab/results.sarif`
+
+  3. Изучи `/lab/results.sarif` — найди SSRF finding
+  4. Запусти `/lab/check.sh <название_файла> <номер_строки>`
+
+  Подсказки:
+  - `codeql --version`
+  - `codeql database create --help`
+  - `jq '.runs[].results[] | {rule: .ruleId, file: .locations[].physicalLocation.artifactLocation.uri}' /lab/results.sarif`
+type: ssh_lab
+order: 55
+config:
+  difficulty: high
+  tags: [sast, codeql, dataflow, ssrf, appsec, tools]
+  max_points: 300
+  docker_image: lms/codeql-basics
+  container_port: 80
+  ttl_minutes: 180
+  flag_hash: "d00f4471d2860054684415a04f6d3dae35ba2304e0e499812d4ebbf26dde00f3"

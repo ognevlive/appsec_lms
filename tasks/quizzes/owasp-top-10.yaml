@@ -1,0 +1,55 @@
+title: "OWASP Top 10 (2021)"
+description: |
+  Тест на знание OWASP Top 10 — 2021.
+  Проверяет понимание основных категорий рисков, их изменений по сравнению с предыдущими версиями и реальных примеров уязвимостей.
+type: quiz
+order: 19
+config:
+  difficulty: high
+  tags: [owasp-top-10, web, appsec]
+  max_points: 200
+  questions:
+    - id: 1
+      text: "Какая категория уязвимостей заняла первое место в OWASP Top 10 — 2021, сместив Injection?"
+      options:
+        - "Cryptographic Failures"
+        - "Broken Access Control"
+        - "Security Misconfiguration"
+        - "Server-Side Request Forgery (SSRF)"
+      correct_answer: "Broken Access Control"
+
+    - id: 2
+      text: "Какая категория в OWASP Top 10 — 2021 впервые появилась как отдельный пункт и описывает проблемы архитектуры и проектирования?"
+      options:
+        - "Software and Data Integrity Failures"
+        - "Insecure Design"
+        - "Security Logging and Monitoring Failures"
+        - "Vulnerable and Outdated Components"
+      correct_answer: "Insecure Design"
+
+    - id: 3
+      text: "Что такое SSRF (Server-Side Request Forgery), впервые включённая в OWASP Top 10 — 2021?"
+      options:
+        - "Атака, при которой злоумышленник подделывает SSL-сертификат сервера"
+        - "Атака, при которой сервер выполняет HTTP-запросы к внутренним ресурсам по указанию злоумышленника"
+        - "Метод обхода аутентификации путём подмены заголовка `User-Agent`"
+        - "Техника перехвата DNS-запросов на стороне сервера"
+      correct_answer: "Атака, при которой сервер выполняет HTTP-запросы к внутренним ресурсам по указанию злоумышленника"
+
+    - id: 4
+      text: "К какой категории OWASP Top 10 — 2021 относится уязвимость небезопасной десериализации?"
+      options:
+        - "Injection"
+        - "Broken Access Control"
+        - "Software and Data Integrity Failures"
+        - "Cryptographic Failures"
+      correct_answer: "Software and Data Integrity Failures"
+
+    - id: 5
+      text: "Какая категория OWASP Top 10 — 2021 включает использование стандартных паролей, открытые директории, ненужные включённые функции и неправильно настроенные HTTP-заголовки?"
+      options:
+        - "Broken Access Control"
+        - "Insecure Design"
+        - "Security Misconfiguration"
+        - "Identification and Authentication Failures"
+      correct_answer: "Security Misconfiguration"

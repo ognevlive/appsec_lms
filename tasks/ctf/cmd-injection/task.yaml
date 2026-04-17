@@ -1,0 +1,16 @@
+title: "Command Injection: Ping Service"
+description: |
+  Веб-сервис для проверки доступности серверов (`ping`).
+  Поле ввода IP-адреса недостаточно валидировано.
+  Проэксплуатируйте уязвимость Command Injection для выполнения
+  произвольных команд на сервере и найдите флаг.
+type: ctf
+order: 17
+config:
+  difficulty: high
+  tags: [rce, injection, web]
+  max_points: 300
+  docker_image: lms/cmd-injection
+  container_port: 80
+  ttl_minutes: 120
+  flag_hash: "792d32fad5e35fdc84e6a1acb2aa686382b13b9c0e14984a79ff7f7a9c06da96"

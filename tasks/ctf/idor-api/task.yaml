@@ -1,0 +1,17 @@
+title: "IDOR: API без авторизации"
+description: |
+  Перед вами REST API сервиса управления документами.
+  Вы авторизованы как обычный пользователь (`user_id=2`).
+  Найдите способ получить доступ к документам других пользователей,
+  используя уязвимость IDOR (Insecure Direct Object Reference).
+  Флаг находится в секретном документе администратора.
+type: ctf
+order: 11
+config:
+  difficulty: medium
+  tags: [idor, api, owasp-top-10]
+  max_points: 200
+  docker_image: lms/idor-api
+  container_port: 80
+  ttl_minutes: 120
+  flag_hash: "6201a86f299a2d3f34d878e0110f79db05536677bfa49f3596d67e2604c8a282"

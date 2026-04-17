@@ -1,0 +1,31 @@
+title: "Lab 20: Dependency Scanning — политика в CI/CD"
+description: |
+  В `/lab/repo` — Gitea-репозиторий с зависимостями разных уровней риска:
+  - `critical-lib==1.0`  (CVSS 9.8 — блокировать)
+  - `medium-lib==2.1`    (CVSS 6.5 — предупреждение)
+  - `safe-lib==3.0`      (нет CVE — ок)
+
+  Задача — настроить `.gitea/workflows/deps.yml`:
+  1. `trivy` сканирует зависимости
+  2. Pipeline БЛОКИРУЕТ при CVSS ≥ 8.0
+  3. Pipeline ПРЕДУПРЕЖДАЕТ при CVSS 4.0–7.9 (но не блокирует)
+  4. Pipeline ПРОХОДИТ при только low/no vulnerabilities
+
+  Gitea: `http://localhost:3000` (`student` / `lab_password`)
+
+  `/lab/check.sh` верифицирует поведение всех трёх случаев.
+
+  Подсказки:
+  - `trivy fs --exit-code 1 --severity CRITICAL,HIGH .`
+  - `trivy fs --exit-code 0 --severity MEDIUM .`  (только warn)
+  - Gitea Actions: `continue-on-error: true` для warn-шага
+type: ssh_lab
+order: 59
+config:
+  difficulty: high
+  tags: [supply-chain, trivy, ci-cd, policy, cvss, gitea]
+  max_points: 300
+  docker_image: lms/deps-ci-policy
+  container_port: 80
+  ttl_minutes: 180
+  flag_hash: "62651cb2c8362e34884ff1a6db63b2334a8b8bf13dfa0f28645e0e1d148b031a"

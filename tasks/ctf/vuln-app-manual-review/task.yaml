@@ -1,0 +1,30 @@
+title: "Lab 9: Manual Code Review — найди 4 уязвимости"
+description: |
+  Flask-приложение `/lab/app` доступно по `http://localhost:5000`
+  Исходный код доступен в `/lab/app/`
+
+  Приложение содержит 4 уязвимости разных классов.
+  Найди их через ручной code review (без инструментов):
+
+  1. SQL Injection — в каком endpoint и параметре?
+  2. Stored XSS — где пользовательский ввод попадает в HTML без экранирования?
+  3. Path Traversal — какой endpoint позволяет читать произвольные файлы?
+  4. SSRF — где сервер делает запрос по URL из user input?
+
+  Когда найдёшь все 4 — запусти:
+    `/lab/check.sh sqli xss traversal ssrf`
+
+  Подсказки:
+  - Читай код, не сканируй инструментами
+  - Ищи: `request.args`, `request.form`, `cursor.execute`, `render_template_string`
+  - Проверь все файлы: `ls /lab/app/`
+type: ctf
+order: 48
+config:
+  difficulty: medium
+  tags: [sast, code-review, sqli, xss, path-traversal, ssrf, manual]
+  max_points: 200
+  docker_image: lms/vuln-app-manual-review
+  container_port: 5000
+  ttl_minutes: 120
+  flag_hash: "3406cf9d435534640d7039f9cb8291f18d6579e2109b7c13453ed7f27338dfb4"

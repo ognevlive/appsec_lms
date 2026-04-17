@@ -1,0 +1,15 @@
+title: "XSS Stored: Кража Cookie"
+description: |
+  Гостевая книга с уязвимостью Stored XSS.
+  Внедрите JavaScript-код в поле комментария, чтобы выполнить XSS-атаку.
+  Флаг спрятан в `cookie` администратора, который периодически просматривает страницу.
+type: ctf
+order: 5
+config:
+  difficulty: medium
+  tags: [xss, web, client-side]
+  max_points: 200
+  docker_image: lms/xss-stored
+  container_port: 80
+  ttl_minutes: 120
+  flag_hash: "10f076e6e21e69e68e382521b2579e844e4f8f2b3123875970c186f8000154d7"

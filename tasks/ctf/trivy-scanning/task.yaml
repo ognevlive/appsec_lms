@@ -1,0 +1,36 @@
+title: "Lab 18: Trivy — комплексное сканирование"
+description: |
+  Контейнер содержит несколько целей для сканирования:
+  - Docker образ `lms/java-legacy` (с Log4j 2.14)
+  - Директория `/lab/infra/` с Terraform конфигами
+  - Директория `/lab/app/` с Python проектом
+
+  Задача — освоить разные режимы `trivy`:
+
+  1. Сканирование образа:
+       `trivy image lms/java-legacy`
+     Найди CVE с CRITICAL severity (подсказка: Log4Shell)
+
+  2. Сканирование IaC:
+       `trivy config /lab/infra/`
+     Найди мисконфигурацию в S3 bucket конфиге
+
+  3. Сканирование файловой системы:
+       `trivy fs /lab/app/`
+     Найди HIGH vulnerability в зависимостях
+
+  Запусти `/lab/check.sh <cve_id>` для получения флага.
+
+  Подсказки:
+  - `trivy image --severity CRITICAL lms/java-legacy`
+  - `trivy config --format json /lab/infra/ | jq '.Results[].Misconfigurations'`
+type: ssh_lab
+order: 57
+config:
+  difficulty: medium
+  tags: [supply-chain, trivy, docker, iac, cve, tools]
+  max_points: 200
+  docker_image: lms/trivy-scanning
+  container_port: 80
+  ttl_minutes: 120
+  flag_hash: "7fb114ddbdf147acb67769b04e63d30c7cb4a74c6b308b2e54c768298776a20b"

@@ -1,0 +1,18 @@
+title: "JWT Bypass: Подделка токена"
+description: |
+  API сервис использует JWT для аутентификации.
+  Вы получили токен обычного пользователя.
+  Исследуйте реализацию JWT и найдите способ
+  получить токен с ролью `admin`.
+
+  Подсказка: проверьте обработку алгоритма подписи.
+type: ctf
+order: 20
+config:
+  difficulty: high
+  tags: [jwt, auth, api]
+  max_points: 300
+  docker_image: lms/jwt-bypass
+  container_port: 80
+  ttl_minutes: 120
+  flag_hash: "df4f1116525719580adad202edfe73a965a4e255e8c73f317e40df841bf45a4c"
