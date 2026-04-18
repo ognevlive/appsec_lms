@@ -1,12 +1,17 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import get_current_user
 from database import get_db
-from models import Task, TaskSubmission, SubmissionStatus, User, UserRole
+from models import Task, TaskSubmission, SubmissionStatus, TaskType, User, UserRole
 
 router = APIRouter(prefix="/api/me", tags=["progress"], dependencies=[Depends(get_current_user)])
+
+
+class ViewedRequest(BaseModel):
+    task_id: int
 
 
 @router.get("/progress")
@@ -134,3 +139,35 @@ async def get_progress(
         "specializations": spec_list,
         "activity_log": activity_log,
     }
+
+
+@router.post("/progress/viewed")
+async def mark_viewed(
+    body: ViewedRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Idempotently record a theory view as a success submission."""
+    task_result = await db.execute(select(Task).where(Task.id == body.task_id))
+    task = task_result.scalar_one_or_none()
+    if not task or task.type != TaskType.theory:
+        raise HTTPException(status_code=404, detail="Theory task not found")
+
+    existing = await db.execute(
+        select(TaskSubmission).where(
+            TaskSubmission.user_id == user.id,
+            TaskSubmission.task_id == body.task_id,
+            TaskSubmission.status == SubmissionStatus.success,
+        )
+    )
+    if existing.scalar_one_or_none():
+        return {"ok": True}
+
+    db.add(TaskSubmission(
+        user_id=user.id,
+        task_id=body.task_id,
+        status=SubmissionStatus.success,
+        details={"source": "theory_viewed"},
+    ))
+    await db.commit()
+    return {"ok": True}
