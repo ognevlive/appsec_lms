@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from auth import require_admin
 from database import get_db
@@ -23,7 +24,14 @@ from schemas_admin import (
     UnitCreate,
     UnitUpdate,
 )
-from services.bundle import BundleError, open_bundle, pack_task, read_yaml
+from services.bundle import (
+    BundleError,
+    list_task_files,
+    open_bundle,
+    pack_course,
+    pack_task,
+    read_yaml,
+)
 from services.flag_hash import apply_flag_to_config
 
 router = APIRouter(
@@ -422,3 +430,141 @@ async def import_task(
     await db.commit()
     await db.refresh(task)
     return _task_out(task)
+
+
+def _module_manifest(m: Module) -> dict:
+    return {
+        "title": m.title,
+        "order": m.order,
+        "description": m.description or "",
+        "estimated_hours": m.estimated_hours,
+        "learning_outcomes": m.learning_outcomes or [],
+        "config": m.config or {},
+        "units": [
+            {"task_slug": u.task.slug, "unit_order": u.unit_order,
+             "is_required": u.is_required}
+            for u in sorted(m.units, key=lambda x: x.unit_order)
+        ],
+    }
+
+
+def _course_manifest(course: Course) -> dict:
+    return {
+        "slug": course.slug,
+        "title": course.title,
+        "description": course.description or "",
+        "order": course.order,
+        "config": course.config or {},
+        "modules": [_module_manifest(m) for m in sorted(course.modules, key=lambda x: x.order)],
+    }
+
+
+@router.get("/courses/{course_id}/export")
+async def export_course(course_id: int, bundle: bool = False,
+                         db: AsyncSession = Depends(get_db)):
+    rows = await db.execute(
+        select(Course)
+        .options(selectinload(Course.modules)
+                 .selectinload(Module.units)
+                 .selectinload(ModuleUnit.task))
+        .where(Course.id == course_id)
+    )
+    course = rows.scalars().unique().one_or_none()
+    if not course:
+        raise HTTPException(404, "Course not found")
+
+    tasks_manifest: dict[str, dict] = {}
+    if bundle:
+        for m in course.modules:
+            for u in m.units:
+                tasks_manifest[u.task.slug] = _task_manifest(u.task)
+
+    blob = pack_course(_course_manifest(course), tasks_manifest)
+    return Response(
+        content=blob, media_type="application/zip",
+        headers={"Content-Disposition":
+                 f'attachment; filename="course-{course.slug}.zip"'},
+    )
+
+
+@router.post("/courses/import", status_code=201, response_model=CourseOutAdmin)
+async def import_course(
+    file: UploadFile = File(...),
+    import_tasks: bool = False,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    raw = await file.read()
+    try:
+        zf = open_bundle(raw)
+        course_data = read_yaml(zf, "course.yaml")
+    except BundleError as e:
+        raise HTTPException(400, str(e))
+
+    # Опционально импортируем таски ПЕРЕД курсом — нужны для resolve task_slug → task_id
+    if import_tasks:
+        for name in list_task_files(zf):
+            m = read_yaml(zf, name)
+            await _upsert_task_from_manifest(m, admin.id, db)
+        await db.flush()
+
+    # Resolve task_slug → task_id
+    referenced_slugs: set[str] = set()
+    for m in course_data.get("modules", []):
+        for u in m.get("units", []):
+            referenced_slugs.add(u["task_slug"])
+    rows = await db.execute(select(Task.slug, Task.id).where(Task.slug.in_(referenced_slugs)))
+    slug_to_id = dict(rows.all())
+    missing = referenced_slugs - set(slug_to_id)
+    if missing:
+        await db.rollback()
+        raise HTTPException(400, {"message": "Missing tasks", "slugs": sorted(missing)})
+
+    # Upsert course (UPDATE если slug уже есть, CREATE иначе)
+    existing = await db.execute(
+        select(Course)
+        .options(selectinload(Course.modules))
+        .where(Course.slug == course_data["slug"])
+    )
+    course = existing.scalars().unique().one_or_none()
+    if course:
+        # сносим старые модули — ON DELETE CASCADE удалит юниты
+        for m in list(course.modules):
+            await db.delete(m)
+        course.title = course_data["title"]
+        course.description = course_data.get("description", "")
+        course.order = course_data.get("order", 0)
+        course.config = course_data.get("config", {})
+        # is_visible при импорте всегда False (спека, секция 4)
+        course.is_visible = False
+    else:
+        course = Course(
+            slug=course_data["slug"], title=course_data["title"],
+            description=course_data.get("description", ""),
+            order=course_data.get("order", 0),
+            config=course_data.get("config", {}),
+            is_visible=False,
+        )
+        db.add(course)
+    await db.flush()
+
+    for m_data in course_data.get("modules", []):
+        module = Module(
+            course_id=course.id, title=m_data["title"], order=m_data["order"],
+            description=m_data.get("description", ""),
+            estimated_hours=m_data.get("estimated_hours"),
+            learning_outcomes=m_data.get("learning_outcomes", []),
+            config=m_data.get("config", {}),
+        )
+        db.add(module)
+        await db.flush()
+        for u_data in m_data.get("units", []):
+            db.add(ModuleUnit(
+                module_id=module.id,
+                task_id=slug_to_id[u_data["task_slug"]],
+                unit_order=u_data.get("unit_order", 0),
+                is_required=u_data.get("is_required", True),
+            ))
+    await db.commit()
+    await db.refresh(course)
+    return course
