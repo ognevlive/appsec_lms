@@ -44,14 +44,22 @@ class QuizConfig(BaseModel):
     shuffle: bool = False
 
 
+# SECURITY CONTRACT for CtfConfig / SshLabConfig:
+#   `flag` is plaintext and WRITE-ONLY. The admin router MUST:
+#     1. Read `flag` from the incoming payload.
+#     2. Compute SHA-256, store the digest in `flag_hash` on Task.config.
+#     3. STRIP `flag` from Task.config BEFORE persisting (otherwise it leaks
+#        via TaskOutAdmin.config, which is `dict` — no schema-level guard).
+#   Any code path that persists Task.config must use services/flag_hash.py.
+
+
 class CtfConfig(BaseModel):
     docker_image: str
     port: int = 5000
     ttl_minutes: int = 120
     difficulty: Literal["easy", "medium", "hard"] = "medium"
     flag_hash: str = ""
-    # plaintext flag — write-only, никогда не возвращается наружу
-    flag: str | None = None
+    flag: str | None = None  # write-only, stripped before persistence — see SECURITY CONTRACT above
 
 
 class SshLabConfig(BaseModel):
@@ -61,7 +69,7 @@ class SshLabConfig(BaseModel):
     difficulty: Literal["easy", "medium", "hard"] = "medium"
     instructions: str = ""
     flag_hash: str = ""
-    flag: str | None = None
+    flag: str | None = None  # write-only, stripped before persistence — see SECURITY CONTRACT above
 
 
 class GitlabConfig(BaseModel):
