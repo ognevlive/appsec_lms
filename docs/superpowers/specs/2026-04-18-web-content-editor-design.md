@@ -214,9 +214,20 @@ modules:
 **Type-specific секция:**
 
 - **theory:**
-  - `content_kind`: `text | video`.
-  - Если `text`: markdown-редактор с preview.
-  - Если `video`: поля `video.provider` (youtube/vimeo/url), `video.url`, `video.duration_seconds`.
+  - `content_kind`: радио `text | video | mixed` (совпадает с существующей моделью во фронте, `TheorySection.tsx`).
+  - `tags`: chips-инпут (массив строк, опционально).
+  - Если `content_kind` ∈ {`text`, `mixed`}: `content` — markdown-редактор с split live-preview (слева textarea, справа рендер через существующий `Md` компонент).
+  - Если `content_kind` ∈ {`video`, `mixed`}: `video.provider` (select `youtube | url`), `video.src` (URL, валидация зависит от provider), live-preview embed под полем.
+  - Собственные видео-файлы **не загружаются** в первой итерации — только ссылки (YouTube или внешний HTTPS URL на файл/CDN).
+  - Итоговый `config`:
+    ```json
+    {
+      "content_kind": "mixed",
+      "tags": ["sast", "foundations"],
+      "video": { "provider": "youtube", "src": "https://..." },
+      "content": "## Markdown..."
+    }
+    ```
 - **quiz:**
   - Список вопросов — карточки с текстом вопроса + варианты (add/remove/reorder) + флаг правильности.
   - `pass_threshold` (%), `shuffle` (bool).
@@ -275,5 +286,5 @@ modules:
 - Роль content-author (между student и admin).
 - Multi-user concurrent editing с локами или CRDT.
 - Встроенная сборка Docker-образов (build-in-app).
-- Загрузка медиа (картинки в theory, видео-файлы) — пока только внешние URL.
+- Загрузка медиа (картинки в theory, видео-файлы) — пока только внешние URL / YouTube.
 - Public Docker Hub discovery / шаблоны CTF-тасков.
