@@ -184,6 +184,45 @@ async def delete_module(module_id: int, db: AsyncSession = Depends(get_db)):
     await db.commit()
 
 
+@router.get("/courses/{course_id}/modules-list", response_model=list[ModuleOutAdmin])
+async def list_course_modules(course_id: int, db: AsyncSession = Depends(get_db)):
+    course = await db.get(Course, course_id)
+    if not course:
+        raise HTTPException(404, "Course not found")
+    rows = await db.execute(
+        select(Module).where(Module.course_id == course_id).order_by(Module.order)
+    )
+    return rows.scalars().all()
+
+
+@router.get("/modules/{module_id}/full")
+async def get_module_full(module_id: int, db: AsyncSession = Depends(get_db)):
+    m = await db.execute(
+        select(Module)
+        .options(selectinload(Module.units).selectinload(ModuleUnit.task))
+        .where(Module.id == module_id)
+    )
+    module = m.scalars().unique().one_or_none()
+    if not module:
+        raise HTTPException(404, "Module not found")
+    return {
+        "module": ModuleOutAdmin.model_validate(module).model_dump(),
+        "units": [
+            {
+                "id": u.id,
+                "module_id": u.module_id,
+                "task_id": u.task_id,
+                "unit_order": u.unit_order,
+                "is_required": u.is_required,
+                "task_slug": u.task.slug,
+                "task_title": u.task.title,
+                "task_type": u.task.type.value,
+            }
+            for u in sorted(module.units, key=lambda x: x.unit_order)
+        ],
+    }
+
+
 @router.post("/courses/{course_id}/reorder-modules")
 async def reorder_modules(course_id: int, items: list[ReorderItem],
                            db: AsyncSession = Depends(get_db)):

@@ -1,4 +1,4 @@
-import type { AdminCourse, AdminModule, AdminTask, AdminUnit } from './types';
+import type { AdminCourse, AdminModule, AdminTask, AdminUnit, TaskType } from './types';
 
 const API_BASE = '/api';
 
@@ -144,6 +144,18 @@ export const api = {
     reorderModules: (course_id: number, items: {id: number; order: number}[]) =>
       request<{ok: true}>(`/admin/content/courses/${course_id}/reorder-modules`,
         { method: 'POST', body: JSON.stringify(items) }),
+
+    listCourseModules: (course_id: number) =>
+      request<AdminModule[]>(`/admin/content/courses/${course_id}/modules-list`),
+    getModuleFull: (id: number) =>
+      request<{
+        module: AdminModule;
+        units: (AdminUnit & {
+          task_slug: string;
+          task_title: string;
+          task_type: TaskType;
+        })[];
+      }>(`/admin/content/modules/${id}/full`),
 
     createModule: (course_id: number, body: Partial<AdminModule>) =>
       request<AdminModule>(`/admin/content/courses/${course_id}/modules`,
