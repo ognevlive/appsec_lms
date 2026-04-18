@@ -11,7 +11,7 @@ interface MobileNavItem {
 }
 
 const studentItems: MobileNavItem[] = [
-  { to: '/tracks', icon: 'route', label: 'Треки' },
+  { to: '/courses', icon: 'school', label: 'Курсы' },
   { to: '/challenges', icon: 'security', label: 'Задания' },
   { to: '/my-results', icon: 'analytics', label: 'Результаты' },
 ];
