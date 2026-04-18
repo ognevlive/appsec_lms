@@ -81,8 +81,8 @@ def _build_module_out(course: Course, module: Module, statuses: dict[int, str]) 
     )
 
 
-def _load_course_query():
-    return (
+def _load_course_query(visible_only: bool = True):
+    q = (
         select(Course)
         .options(
             selectinload(Course.modules)
@@ -91,6 +91,9 @@ def _load_course_query():
         )
         .order_by(Course.order, Course.id)
     )
+    if visible_only:
+        q = q.where(Course.is_visible == True)  # noqa: E712
+    return q
 
 
 @router.get("", response_model=list[CourseOut])
