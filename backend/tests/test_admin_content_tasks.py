@@ -94,3 +94,35 @@ async def test_create_task_duplicate_slug_409():
         r2 = await c.post("/api/admin/content/tasks", json=body,
                           headers={"Authorization": f"Bearer {token}"})
         assert r2.status_code == 409
+
+
+async def test_list_tasks_filter_by_type():
+    token = await _admin_token()
+    suffix = uuid.uuid4().hex[:6]
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        await c.post("/api/admin/content/tasks",
+                     json={"slug": f"th-{suffix}", "title": "T", "type": "theory", "config": {}},
+                     headers={"Authorization": f"Bearer {token}"})
+        await c.post("/api/admin/content/tasks",
+                     json={"slug": f"qz-{suffix}", "title": "Q", "type": "quiz", "config": {}},
+                     headers={"Authorization": f"Bearer {token}"})
+
+        r = await c.get("/api/admin/content/tasks?type=theory",
+                        headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 200
+        slugs = [t["slug"] for t in r.json()]
+        assert f"th-{suffix}" in slugs
+        assert f"qz-{suffix}" not in slugs
+
+
+async def test_list_tasks_search_by_title():
+    token = await _admin_token()
+    unique = f"NEEDLE-{uuid.uuid4().hex[:6]}"
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        await c.post("/api/admin/content/tasks",
+                     json={"slug": unique.lower(), "title": unique, "type": "theory", "config": {}},
+                     headers={"Authorization": f"Bearer {token}"})
+        r = await c.get(f"/api/admin/content/tasks?search={unique}",
+                        headers={"Authorization": f"Bearer {token}"})
+        titles = [t["title"] for t in r.json()]
+        assert unique in titles

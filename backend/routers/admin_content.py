@@ -3,13 +3,13 @@
 Защищён require_admin. Все endpoints под /api/admin/content.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import require_admin
 from database import get_db
-from models import Task, TaskType, User
+from models import ModuleUnit, Task, TaskType, User
 from schemas_admin import TaskCreate, TaskOutAdmin
 from services.flag_hash import apply_flag_to_config
 
@@ -38,6 +38,27 @@ def _task_out(task: Task, usage: list[dict] | None = None) -> dict:
 @router.get("/courses")
 async def list_courses_admin():
     return []
+
+
+@router.get("/tasks", response_model=list[TaskOutAdmin])
+async def list_tasks(
+    type: TaskType | None = None,
+    search: str | None = None,
+    unused: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
+    q = select(Task)
+    if type is not None:
+        q = q.where(Task.type == type)
+    if search:
+        like = f"%{search}%"
+        q = q.where(or_(Task.title.ilike(like), Task.slug.ilike(like)))
+    if unused:
+        used_ids = select(ModuleUnit.task_id).distinct()
+        q = q.where(Task.id.notin_(used_ids))
+    q = q.order_by(Task.updated_at.desc())
+    result = await db.execute(q)
+    return [_task_out(t) for t in result.scalars().all()]
 
 
 @router.post("/tasks", status_code=status.HTTP_201_CREATED, response_model=TaskOutAdmin)
