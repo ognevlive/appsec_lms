@@ -109,6 +109,148 @@ async def delete_course(course_id: int, db: AsyncSession = Depends(get_db)):
     await db.commit()
 
 
+class ModuleOutAdmin(BaseModel):
+    id: int
+    course_id: int
+    title: str
+    description: str
+    order: int
+    estimated_hours: int | None
+    learning_outcomes: list[str]
+    config: dict
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UnitOutAdmin(BaseModel):
+    id: int
+    module_id: int
+    task_id: int
+    unit_order: int
+    is_required: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+@router.post("/courses/{course_id}/modules", status_code=201, response_model=ModuleOutAdmin)
+async def create_module(course_id: int, body: ModuleCreate,
+                         db: AsyncSession = Depends(get_db)):
+    course = await db.get(Course, course_id)
+    if not course:
+        raise HTTPException(404, "Course not found")
+    m = Module(course_id=course_id, **body.model_dump())
+    db.add(m)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, "Duplicate module order in this course")
+    await db.refresh(m)
+    return m
+
+
+@router.patch("/modules/{module_id}", response_model=ModuleOutAdmin)
+async def update_module(module_id: int, body: ModuleUpdate,
+                         db: AsyncSession = Depends(get_db)):
+    m = await db.get(Module, module_id)
+    if not m:
+        raise HTTPException(404, "Module not found")
+    for k, v in body.model_dump(exclude_unset=True).items():
+        setattr(m, k, v)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, "Duplicate module order")
+    await db.refresh(m)
+    return m
+
+
+@router.delete("/modules/{module_id}", status_code=204)
+async def delete_module(module_id: int, db: AsyncSession = Depends(get_db)):
+    m = await db.get(Module, module_id)
+    if not m:
+        raise HTTPException(404, "Module not found")
+    await db.delete(m)
+    await db.commit()
+
+
+@router.post("/courses/{course_id}/reorder-modules")
+async def reorder_modules(course_id: int, items: list[ReorderItem],
+                           db: AsyncSession = Depends(get_db)):
+    rows = await db.execute(select(Module).where(Module.course_id == course_id))
+    by_id = {m.id: m for m in rows.scalars().all()}
+    for i, it in enumerate(items):
+        m = by_id.get(it.id)
+        if not m:
+            raise HTTPException(400, f"Module {it.id} not in course {course_id}")
+        m.order = -(i + 1)
+    await db.flush()
+    for it in items:
+        by_id[it.id].order = it.order
+    await db.commit()
+    return {"ok": True}
+
+
+@router.post("/modules/{module_id}/units", status_code=201, response_model=UnitOutAdmin)
+async def create_unit(module_id: int, body: UnitCreate,
+                       db: AsyncSession = Depends(get_db)):
+    m = await db.get(Module, module_id)
+    if not m:
+        raise HTTPException(404, "Module not found")
+    task = await db.get(Task, body.task_id)
+    if not task:
+        raise HTTPException(400, f"Task {body.task_id} not found")
+    u = ModuleUnit(module_id=module_id, **body.model_dump())
+    db.add(u)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, "Task already in this module")
+    await db.refresh(u)
+    return u
+
+
+@router.patch("/units/{unit_id}", response_model=UnitOutAdmin)
+async def update_unit(unit_id: int, body: UnitUpdate,
+                       db: AsyncSession = Depends(get_db)):
+    u = await db.get(ModuleUnit, unit_id)
+    if not u:
+        raise HTTPException(404, "Unit not found")
+    for k, v in body.model_dump(exclude_unset=True).items():
+        setattr(u, k, v)
+    await db.commit()
+    await db.refresh(u)
+    return u
+
+
+@router.delete("/units/{unit_id}", status_code=204)
+async def delete_unit(unit_id: int, db: AsyncSession = Depends(get_db)):
+    u = await db.get(ModuleUnit, unit_id)
+    if not u:
+        raise HTTPException(404, "Unit not found")
+    await db.delete(u)
+    await db.commit()
+
+
+@router.post("/modules/{module_id}/reorder-units")
+async def reorder_units(module_id: int, items: list[ReorderItem],
+                         db: AsyncSession = Depends(get_db)):
+    rows = await db.execute(select(ModuleUnit).where(ModuleUnit.module_id == module_id))
+    by_id = {u.id: u for u in rows.scalars().all()}
+    for i, it in enumerate(items):
+        u = by_id.get(it.id)
+        if not u:
+            raise HTTPException(400, f"Unit {it.id} not in module {module_id}")
+        u.unit_order = -(i + 1)
+    await db.flush()
+    for it in items:
+        by_id[it.id].unit_order = it.order
+    await db.commit()
+    return {"ok": True}
+
+
 @router.get("/tasks", response_model=list[TaskOutAdmin])
 async def list_tasks(
     type: TaskType | None = None,
