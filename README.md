@@ -113,10 +113,7 @@ docker compose up --build -d
 # 2. Дождаться готовности backend (healthcheck postgres занимает ~10 сек)
 docker compose logs -f backend
 
-# 3. Собрать CTF-образы и залить задания в БД
-./scripts/deploy-labs.sh
-
-# 4. Открыть платформу
+# 3. Открыть платформу
 open http://lms.lab.local
 ```
 
@@ -133,22 +130,35 @@ open http://lms.lab.local
 
 ---
 
-## Скрипт deploy-labs.sh
+## Управление контентом
 
-Скрипт находится в `scripts/deploy-labs.sh`. Управляет тремя операциями:
+Все курсы, модули, юниты и таски управляются через админ-панель:
 
-```bash
-./scripts/deploy-labs.sh              # полный цикл: hash → build → seed → summary
-./scripts/deploy-labs.sh --hash       # вычислить SHA-256 флагов из Dockerfile/app.py, обновить task.yaml
-./scripts/deploy-labs.sh --build      # только собрать Docker-образы CTF-заданий (lms/{task_name})
-./scripts/deploy-labs.sh --seed       # только залить задания из task.yaml в БД
-./scripts/deploy-labs.sh --summary    # вывести статистику: количество заданий, образы
+```
+http://lms.lab.local/admin/courses
+http://lms.lab.local/admin/tasks
 ```
 
-**Когда запускать повторно:**
-- После добавления нового CTF-задания в `tasks/ctf/`
-- После изменения флага в Dockerfile (нужен `--hash` + `--build` + `--seed`)
-- После сброса БД
+### CTF-таски
+
+Dockerfile'ы уязвимых приложений **не хранятся в этом репозитории**. Автор задания:
+
+1. Пишет Dockerfile и собирает образ у себя / в своём CI.
+2. Пушит образ в любой доступный Docker registry (Docker Hub, GHCR, приватный).
+3. В UI → Таски → Новый таск (type=ctf) заполняет поля:
+   - `docker_image`: ссылка на образ (`myuser/lms-sqli-basic:v2`)
+   - `flag`: plaintext-флаг (хэшируется в SHA256 на бэкенде при сохранении)
+   - `port`, `ttl_minutes`, `difficulty`
+
+При запуске студентом существующий `docker_manager` делает `docker pull` и `docker run`.
+
+### Импорт/экспорт
+
+На страницах курсов и тасков есть кнопки «Экспорт» (скачать zip) и «Импорт»
+(загрузить zip). Формат: ZIP с YAML-манифестом внутри.
+
+Курс можно экспортировать отдельно (только структура) или `bundle=true` —
+с включением всех referenced тасков.
 
 ---
 
@@ -162,7 +172,6 @@ lms/
 │   ├── models.py         # ORM-модели: User, Task, TaskSubmission, ContainerInstance
 │   ├── routers/          # эндпоинты по доменам (auth, tasks, ctf, quiz, admin, progress)
 │   ├── services/         # бизнес-логика (docker_manager, scheduler, gitlab_client)
-│   ├── seed.py           # скрипт заливки задач из task.yaml в БД
 │   └── Dockerfile
 ├── frontend/             # React 18 + Vite + Tailwind CSS
 │   ├── src/
@@ -170,43 +179,8 @@ lms/
 │   │   ├── contexts/     # AuthContext (JWT-токен, роль пользователя)
 │   │   └── api.ts        # HTTP-клиент ко всем эндпоинтам backend
 │   └── Dockerfile
-├── tasks/                # определения заданий (не в git, добавить вручную)
-│   ├── ctf/
-│   │   └── {task-name}/
-│   │       ├── Dockerfile    # уязвимое приложение, содержит FLAG{...}
-│   │       ├── task.yaml     # метаданные, flag_hash, TTL, автопроверки
-│   │       └── app.py        # код задания
-│   └── quizzes/
-│       └── {quiz-name}.yaml  # вопросы и варианты ответов
-├── scripts/
-│   └── deploy-labs.sh    # сборка образов + seed БД
 ├── docker-compose.yml
 └── .env
-```
-
----
-
-## Добавление нового CTF-задания
-
-1. Создать директорию `tasks/ctf/{task-name}/`
-2. Положить туда `Dockerfile` (с `FLAG{...}` внутри), `app.py`, `task.yaml`
-3. Минимальный `task.yaml`:
-
-```yaml
-title: "Название задания"
-description: "Описание"
-type: ctf
-order: 10
-difficulty: medium
-docker_image: lms/{task-name}
-ttl_minutes: 120
-flag_hash: ""   # заполнится автоматически через --hash
-port: 5000      # порт внутри контейнера
-```
-
-4. Запустить:
-```bash
-./scripts/deploy-labs.sh
 ```
 
 ---
@@ -228,7 +202,7 @@ docker compose restart backend
 docker compose down && docker compose up -d
 
 # Полный сброс с удалением данных БД
-docker compose down -v && docker compose up --build -d && ./scripts/deploy-labs.sh
+docker compose down -v && docker compose up --build -d
 ```
 
 ---
@@ -241,15 +215,6 @@ sqlalchemy.exc.OperationalError: could not connect to server
 ```
 Причина: postgres ещё не готов. Compose ждёт healthcheck, но если образ не собирался — занимает дольше.
 Решение: подождать 15–20 секунд, затем `docker compose restart backend`.
-
----
-
-**CTF-задания не появляются в каталоге**
-
-Задания не залиты в БД. Запустить:
-```bash
-./scripts/deploy-labs.sh --seed
-```
 
 ---
 
@@ -274,11 +239,12 @@ sudo lsof -i :80
 
 **CTF-контейнер не запускается для студента**
 
-Проверить, что образ собран:
+Проверить, что образ доступен локально или в registry:
 ```bash
-docker images | grep lms/
+docker images | grep <docker_image из таска>
 ```
-Если образа нет — запустить `./scripts/deploy-labs.sh --build`.
+Если образа нет — собрать/запушить его и убедиться, что `docker_image` в админке
+указывает на правильный тег. Backend сделает `docker pull` при первом запуске.
 
 Проверить логи backend:
 ```bash
