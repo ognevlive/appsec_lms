@@ -518,12 +518,12 @@ async def import_course(
     missing = referenced_slugs - set(slug_to_id)
     if missing:
         await db.rollback()
-        raise HTTPException(400, {"message": "Missing tasks", "slugs": sorted(missing)})
+        raise HTTPException(400, f"Missing tasks: {', '.join(sorted(missing))}")
 
     # Upsert course (UPDATE если slug уже есть, CREATE иначе)
     existing = await db.execute(
         select(Course)
-        .options(selectinload(Course.modules))
+        .options(selectinload(Course.modules).selectinload(Module.units))
         .where(Course.slug == course_data["slug"])
     )
     course = existing.scalars().unique().one_or_none()
