@@ -69,6 +69,7 @@ async def _seed_linear_course(suffix: str) -> dict:
             description="",
             order=999,
             config={"progression": "linear", "icon": "x"},
+            is_visible=True,
         )
         db.add_all([user, task1, task2, course])
         await db.commit()
