@@ -6,7 +6,7 @@ from httpx import ASGITransport, AsyncClient
 from auth import create_token, hash_password
 from database import async_session, engine
 from main import app
-from models import User, UserRole
+from models import Course, Module, ModuleUnit, User, UserRole
 
 pytestmark = pytest.mark.anyio
 
@@ -126,3 +126,42 @@ async def test_list_tasks_search_by_title():
                         headers={"Authorization": f"Bearer {token}"})
         titles = [t["title"] for t in r.json()]
         assert unique in titles
+
+
+async def test_get_task_detail_with_usage():
+    token = await _admin_token()
+    suffix = uuid.uuid4().hex[:6]
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        cr = await c.post("/api/admin/content/tasks",
+                          json={"slug": f"used-{suffix}", "title": "U", "type": "theory", "config": {}},
+                          headers={"Authorization": f"Bearer {token}"})
+        task_id = cr.json()["id"]
+
+    async with async_session() as db:
+        course = Course(slug=f"c-{suffix}", title="C", order=0, config={})
+        db.add(course)
+        await db.commit()
+        await db.refresh(course)
+        module = Module(course_id=course.id, title="M", order=1, learning_outcomes=[], config={})
+        db.add(module)
+        await db.commit()
+        await db.refresh(module)
+        unit = ModuleUnit(module_id=module.id, task_id=task_id, unit_order=1, is_required=True)
+        db.add(unit)
+        await db.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.get(f"/api/admin/content/tasks/{task_id}",
+                        headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 200
+        body = r.json()
+        assert len(body["usage"]) == 1
+        assert body["usage"][0]["course_slug"] == f"c-{suffix}"
+
+
+async def test_get_task_404():
+    token = await _admin_token()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.get("/api/admin/content/tasks/999999",
+                        headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 404

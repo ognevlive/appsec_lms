@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import require_admin
 from database import get_db
-from models import ModuleUnit, Task, TaskType, User
+from models import Course, Module, ModuleUnit, Task, TaskType, User
 from schemas_admin import TaskCreate, TaskOutAdmin
 from services.flag_hash import apply_flag_to_config
 
@@ -85,3 +85,24 @@ async def create_task(
         raise HTTPException(status_code=409, detail="Slug already exists")
     await db.refresh(task)
     return _task_out(task)
+
+
+async def _usage_for_task(task_id: int, db: AsyncSession) -> list[dict]:
+    rows = await db.execute(
+        select(Course.id, Course.slug, Module.id, ModuleUnit.id)
+        .join(Module, Module.course_id == Course.id)
+        .join(ModuleUnit, ModuleUnit.module_id == Module.id)
+        .where(ModuleUnit.task_id == task_id)
+    )
+    return [
+        {"course_id": c_id, "course_slug": c_slug, "module_id": m_id, "unit_id": u_id}
+        for c_id, c_slug, m_id, u_id in rows.all()
+    ]
+
+
+@router.get("/tasks/{task_id}", response_model=TaskOutAdmin)
+async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
+    task = await db.get(Task, task_id)
+    if not task:
+        raise HTTPException(404, "Task not found")
+    return _task_out(task, usage=await _usage_for_task(task_id, db))
