@@ -14,25 +14,25 @@ modules:
   - task_slug: owasp-top-10-2021
     order: 1
     required: true
-  - task_slug: sql-injection
+  - task_slug: sql-injection-osnovy
     order: 2
     required: true
-  - task_slug: sql-injection
+  - task_slug: sql-injection-praktika
     order: 3
     required: true
-  - task_slug: cross-site-scripting
+  - task_slug: cross-site-scripting-osnovy
     order: 4
     required: true
-  - task_slug: xss-stored-cookie
+  - task_slug: xss-stored-krazha-cookie
     order: 5
     required: true
-  - task_slug: idor-api
+  - task_slug: idor-api-bez-avtorizacii
     order: 6
     required: true
-  - task_slug: jwt-bypass
+  - task_slug: jwt-bypass-poddelka-tokena
     order: 7
     required: true
-  - task_slug: csrf
+  - task_slug: csrf-perevod-sredstv
     order: 8
     required: true
   - task_slug: command-injection-ping-service
