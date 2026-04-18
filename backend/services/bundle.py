@@ -31,8 +31,11 @@ def _safe_name(name: str) -> str:
 
 def read_yaml(zf: zipfile.ZipFile, name: str) -> dict:
     safe = _safe_name(name)
-    with zf.open(safe) as f:
-        data = yaml.safe_load(f)
+    try:
+        with zf.open(safe) as f:
+            data = yaml.safe_load(f)
+    except KeyError:
+        raise BundleError(f"missing file in bundle: {name}")
     if not isinstance(data, dict):
         raise BundleError(f"{name}: expected YAML mapping")
     return data

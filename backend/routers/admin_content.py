@@ -3,7 +3,7 @@
 Защищён require_admin. Все endpoints под /api/admin/content.
 """
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -383,7 +383,6 @@ async def export_task(task_id: int, db: AsyncSession = Depends(get_db)):
 
 async def _upsert_task_from_manifest(manifest: dict, admin_id: int,
                                        db: AsyncSession) -> Task:
-    from pydantic import ValidationError
     try:
         parsed = TaskCreate.model_validate(manifest)
     except ValidationError as e:
