@@ -2,6 +2,7 @@ import enum
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     Enum,
@@ -9,6 +10,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -87,8 +89,8 @@ class TaskSubmission(Base):
     task = relationship("Task", back_populates="submissions")
 
 
-class Track(Base):
-    __tablename__ = "tracks"
+class Course(Base):
+    __tablename__ = "courses"
 
     id = Column(Integer, primary_key=True)
     title = Column(String(255), nullable=False)
@@ -98,18 +100,50 @@ class Track(Base):
     config = Column(JSONB, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    steps = relationship("TrackStep", back_populates="track", order_by="TrackStep.step_order")
+    modules = relationship(
+        "Module",
+        back_populates="course",
+        order_by="Module.order",
+        cascade="all, delete-orphan",
+    )
 
 
-class TrackStep(Base):
-    __tablename__ = "track_steps"
+class Module(Base):
+    __tablename__ = "modules"
 
     id = Column(Integer, primary_key=True)
-    track_id = Column(Integer, ForeignKey("tracks.id"), nullable=False)
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
-    step_order = Column(Integer, default=0)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, default="")
+    order = Column(Integer, default=0, nullable=False)
+    estimated_hours = Column(Integer, nullable=True)
+    learning_outcomes = Column(JSONB, default=list)
+    config = Column(JSONB, default=dict)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    track = relationship("Track", back_populates="steps")
+    __table_args__ = (UniqueConstraint("course_id", "order", name="uq_modules_course_order"),)
+
+    course = relationship("Course", back_populates="modules")
+    units = relationship(
+        "ModuleUnit",
+        back_populates="module",
+        order_by="ModuleUnit.unit_order",
+        cascade="all, delete-orphan",
+    )
+
+
+class ModuleUnit(Base):
+    __tablename__ = "module_units"
+
+    id = Column(Integer, primary_key=True)
+    module_id = Column(Integer, ForeignKey("modules.id", ondelete="CASCADE"), nullable=False)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
+    unit_order = Column(Integer, default=0, nullable=False)
+    is_required = Column(Boolean, default=True, nullable=False)
+
+    __table_args__ = (UniqueConstraint("module_id", "task_id", name="uq_module_units_module_task"),)
+
+    module = relationship("Module", back_populates="units")
     task = relationship("Task")
 
 
