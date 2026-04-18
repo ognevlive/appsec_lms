@@ -5,6 +5,7 @@ import { api } from '../../api';
 import Button from '../../components/Button';
 import FormInput from '../../components/FormInput';
 import FormSelect from '../../components/FormSelect';
+import TheoryForm from '../../components/admin/task-forms/TheoryForm';
 import type { AdminTask, TaskType } from '../../types';
 
 const TYPES: TaskType[] = ['theory', 'quiz', 'ctf', 'ssh_lab', 'gitlab'];
@@ -179,14 +180,20 @@ function slugifyLocal(s: string): string {
 
 function TypeSpecificForm({
   task,
+  updateConfig,
 }: {
   task: Partial<AdminTask>;
   updateConfig: (p: Record<string, any>) => void;
 }) {
-  // Следующие таски добавят конкретные формы; пока — заглушка для каждого типа
-  return (
-    <pre className="bg-surface-container-low p-4 text-xs">
-      {JSON.stringify(task.config, null, 2)}
-    </pre>
-  );
+  const cfg = task.config || {};
+  switch (task.type) {
+    case 'theory':
+      return <TheoryForm config={cfg} update={updateConfig} />;
+    default:
+      return (
+        <pre className="bg-surface-container-low p-4 text-xs">
+          {JSON.stringify(cfg, null, 2)}
+        </pre>
+      );
+  }
 }
