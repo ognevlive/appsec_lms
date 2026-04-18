@@ -71,6 +71,13 @@ class Task(Base):
     config = Column(JSONB, default=dict)
     order = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
     submissions = relationship("TaskSubmission", back_populates="task")
 
@@ -98,6 +105,7 @@ class Course(Base):
     description = Column(Text, default="")
     order = Column(Integer, default=0)
     config = Column(JSONB, default=dict)
+    is_visible = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     modules = relationship(
