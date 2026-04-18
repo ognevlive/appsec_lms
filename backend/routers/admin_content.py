@@ -131,3 +131,15 @@ async def update_task(
         raise HTTPException(409, "Slug already exists")
     await db.refresh(task)
     return _task_out(task, usage=await _usage_for_task(task_id, db))
+
+
+@router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_task(task_id: int, db: AsyncSession = Depends(get_db)):
+    task = await db.get(Task, task_id)
+    if not task:
+        raise HTTPException(404, "Task not found")
+    usage = await _usage_for_task(task_id, db)
+    if usage:
+        raise HTTPException(status_code=409, detail={"message": "Task is in use", "usage": usage})
+    await db.delete(task)
+    await db.commit()

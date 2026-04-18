@@ -185,3 +185,44 @@ async def test_patch_task_updates_fields_and_hashes_flag():
         assert out["title"] == "After"
         assert "flag" not in out["config"]
         assert out["config"]["flag_hash"] != "old"
+
+
+async def test_delete_task_used_returns_409_with_usage():
+    token = await _admin_token()
+    suffix = uuid.uuid4().hex[:6]
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        cr = await c.post("/api/admin/content/tasks",
+                          json={"slug": f"del-{suffix}", "title": "D", "type": "theory", "config": {}},
+                          headers={"Authorization": f"Bearer {token}"})
+        tid = cr.json()["id"]
+
+    async with async_session() as db:
+        course = Course(slug=f"cd-{suffix}", title="C", order=0, config={})
+        db.add(course); await db.commit(); await db.refresh(course)
+        module = Module(course_id=course.id, title="M", order=1, learning_outcomes=[], config={})
+        db.add(module); await db.commit(); await db.refresh(module)
+        db.add(ModuleUnit(module_id=module.id, task_id=tid, unit_order=1, is_required=True))
+        await db.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.delete(f"/api/admin/content/tasks/{tid}",
+                           headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 409
+        assert len(r.json()["detail"]["usage"]) == 1
+
+
+async def test_delete_task_unused_ok():
+    token = await _admin_token()
+    suffix = uuid.uuid4().hex[:6]
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        cr = await c.post("/api/admin/content/tasks",
+                          json={"slug": f"free-{suffix}", "title": "F", "type": "theory", "config": {}},
+                          headers={"Authorization": f"Bearer {token}"})
+        tid = cr.json()["id"]
+        r = await c.delete(f"/api/admin/content/tasks/{tid}",
+                           headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 204
+        r2 = await c.get(f"/api/admin/content/tasks/{tid}",
+                         headers={"Authorization": f"Bearer {token}"})
+        assert r2.status_code == 404
