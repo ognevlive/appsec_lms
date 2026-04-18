@@ -6,6 +6,7 @@ from auth import get_current_user
 from database import get_db
 from models import SubmissionStatus, Task, TaskSubmission, TaskType, User
 from schemas import QuizQuestion, QuizResult, QuizSubmit
+from services.unlock_guard import require_unit_unlocked
 
 router = APIRouter(prefix="/api/quiz", tags=["quiz"])
 
@@ -27,7 +28,7 @@ async def get_questions(
     ]
 
 
-@router.post("/{task_id}/submit", response_model=QuizResult)
+@router.post("/{task_id}/submit", response_model=QuizResult, dependencies=[Depends(require_unit_unlocked)])
 async def submit_quiz(
     task_id: int,
     body: QuizSubmit,

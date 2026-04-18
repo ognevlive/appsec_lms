@@ -8,6 +8,7 @@ from database import get_db
 from models import SubmissionStatus, Task, TaskSubmission, TaskType, User
 from schemas import GitLabTaskInfo
 from services.gitlab_client import GitLabClient
+from services.unlock_guard import require_unit_unlocked
 
 router = APIRouter(prefix="/api/gitlab", tags=["gitlab"])
 
@@ -26,7 +27,7 @@ def init_gitlab_client(base_url: str, admin_token: str):
     _gitlab_client = GitLabClient(base_url, admin_token)
 
 
-@router.post("/{task_id}/start", response_model=GitLabTaskInfo)
+@router.post("/{task_id}/start", response_model=GitLabTaskInfo, dependencies=[Depends(require_unit_unlocked)])
 async def start_gitlab_task(
     task_id: int,
     user: User = Depends(get_current_user),

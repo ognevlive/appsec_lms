@@ -18,11 +18,12 @@ from models import (
 from schemas import CheckResponse, CheckResultItem, ContainerInfo, FlagSubmit
 from services.container_checker import run_checks
 from services.docker_manager import start_container, stop_container
+from services.unlock_guard import require_unit_unlocked
 
 router = APIRouter(prefix="/api/ctf", tags=["ctf"])
 
 
-@router.post("/{task_id}/start", response_model=ContainerInfo)
+@router.post("/{task_id}/start", response_model=ContainerInfo, dependencies=[Depends(require_unit_unlocked)])
 async def start_ctf(
     task_id: int,
     user: User = Depends(get_current_user),
@@ -117,7 +118,7 @@ async def ctf_status(
     )
 
 
-@router.post("/{task_id}/flag")
+@router.post("/{task_id}/flag", dependencies=[Depends(require_unit_unlocked)])
 async def submit_flag(
     task_id: int,
     body: FlagSubmit,
@@ -146,7 +147,7 @@ async def submit_flag(
     return {"status": "correct"}
 
 
-@router.post("/{task_id}/check", response_model=CheckResponse)
+@router.post("/{task_id}/check", response_model=CheckResponse, dependencies=[Depends(require_unit_unlocked)])
 async def check_container(
     task_id: int,
     user: User = Depends(get_current_user),
