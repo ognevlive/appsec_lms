@@ -1,6 +1,8 @@
+import type { AdminCourse, AdminModule, AdminTask, AdminUnit } from './types';
+
 const API_BASE = '/api';
 
-function getToken(): string | null {
+export function getToken(): string | null {
   return localStorage.getItem('token');
 }
 
@@ -127,5 +129,82 @@ export const api = {
     if (params?.per_page) searchParams.set('per_page', String(params.per_page));
     const qs = searchParams.toString();
     return request<any>(`/admin/users${qs ? `?${qs}` : ''}`);
+  },
+
+  adminContent: {
+    listCourses: () => request<AdminCourse[]>('/admin/content/courses'),
+    createCourse: (body: Partial<AdminCourse>) =>
+      request<AdminCourse>('/admin/content/courses',
+        { method: 'POST', body: JSON.stringify(body) }),
+    patchCourse: (id: number, body: Partial<AdminCourse>) =>
+      request<AdminCourse>(`/admin/content/courses/${id}`,
+        { method: 'PATCH', body: JSON.stringify(body) }),
+    deleteCourse: (id: number) =>
+      request<void>(`/admin/content/courses/${id}`, { method: 'DELETE' }),
+    reorderModules: (course_id: number, items: {id: number; order: number}[]) =>
+      request<{ok: true}>(`/admin/content/courses/${course_id}/reorder-modules`,
+        { method: 'POST', body: JSON.stringify(items) }),
+
+    createModule: (course_id: number, body: Partial<AdminModule>) =>
+      request<AdminModule>(`/admin/content/courses/${course_id}/modules`,
+        { method: 'POST', body: JSON.stringify(body) }),
+    patchModule: (id: number, body: Partial<AdminModule>) =>
+      request<AdminModule>(`/admin/content/modules/${id}`,
+        { method: 'PATCH', body: JSON.stringify(body) }),
+    deleteModule: (id: number) =>
+      request<void>(`/admin/content/modules/${id}`, { method: 'DELETE' }),
+    reorderUnits: (module_id: number, items: {id: number; order: number}[]) =>
+      request<{ok: true}>(`/admin/content/modules/${module_id}/reorder-units`,
+        { method: 'POST', body: JSON.stringify(items) }),
+
+    createUnit: (module_id: number, body: Partial<AdminUnit>) =>
+      request<AdminUnit>(`/admin/content/modules/${module_id}/units`,
+        { method: 'POST', body: JSON.stringify(body) }),
+    patchUnit: (id: number, body: Partial<AdminUnit>) =>
+      request<AdminUnit>(`/admin/content/units/${id}`,
+        { method: 'PATCH', body: JSON.stringify(body) }),
+    deleteUnit: (id: number) =>
+      request<void>(`/admin/content/units/${id}`, { method: 'DELETE' }),
+
+    listTasks: (params: {type?: string; search?: string; unused?: boolean} = {}) => {
+      const qs = new URLSearchParams();
+      if (params.type) qs.set('type', params.type);
+      if (params.search) qs.set('search', params.search);
+      if (params.unused) qs.set('unused', 'true');
+      const q = qs.toString();
+      return request<AdminTask[]>(`/admin/content/tasks${q ? '?' + q : ''}`);
+    },
+    getTask: (id: number) => request<AdminTask>(`/admin/content/tasks/${id}`),
+    createTask: (body: Partial<AdminTask>) =>
+      request<AdminTask>('/admin/content/tasks',
+        { method: 'POST', body: JSON.stringify(body) }),
+    patchTask: (id: number, body: Partial<AdminTask>) =>
+      request<AdminTask>(`/admin/content/tasks/${id}`,
+        { method: 'PATCH', body: JSON.stringify(body) }),
+    deleteTask: (id: number) =>
+      request<void>(`/admin/content/tasks/${id}`, { method: 'DELETE' }),
+
+    exportTask: (id: number) =>
+      fetch(`${API_BASE}/admin/content/tasks/${id}/export`,
+        { headers: { Authorization: `Bearer ${getToken()}` } }).then(r => r.blob()),
+    exportCourse: (id: number, bundle: boolean) =>
+      fetch(`${API_BASE}/admin/content/courses/${id}/export?bundle=${bundle}`,
+        { headers: { Authorization: `Bearer ${getToken()}` } }).then(r => r.blob()),
+    importTask: (file: File) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      return fetch(`${API_BASE}/admin/content/tasks/import`,
+        { method: 'POST', body: fd,
+          headers: { Authorization: `Bearer ${getToken()}` } })
+        .then(r => r.json());
+    },
+    importCourse: (file: File, importTasks: boolean) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      return fetch(`${API_BASE}/admin/content/courses/import?import_tasks=${importTasks}`,
+        { method: 'POST', body: fd,
+          headers: { Authorization: `Bearer ${getToken()}` } })
+        .then(r => r.json());
+    },
   },
 };

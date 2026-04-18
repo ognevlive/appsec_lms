@@ -150,3 +150,47 @@ export interface CourseItem {
 export interface CourseDetail extends CourseItem {
   modules: ModuleItem[];
 }
+
+export type TaskType = 'quiz' | 'ctf' | 'gitlab' | 'theory' | 'ssh_lab';
+
+export interface AdminTask {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  type: TaskType;
+  order: number;
+  config: Record<string, any>;
+  author_id: number | null;
+  updated_at: string;
+  usage?: { course_id: number; course_slug: string; module_id: number; unit_id: number }[];
+}
+
+export interface AdminCourse {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  order: number;
+  config: Record<string, any>;
+  is_visible: boolean;
+}
+
+export interface AdminModule {
+  id: number;
+  course_id: number;
+  title: string;
+  description: string;
+  order: number;
+  estimated_hours: number | null;
+  learning_outcomes: string[];
+  config: Record<string, any>;
+}
+
+export interface AdminUnit {
+  id: number;
+  module_id: number;
+  task_id: number;
+  unit_order: number;
+  is_required: boolean;
+}
