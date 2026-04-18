@@ -19,6 +19,8 @@ const studentItems: SidebarItem[] = [
 
 const adminItems: SidebarItem[] = [
   { to: '/admin/users', icon: 'group', label: 'Пользователи' },
+  { to: '/admin/courses', icon: 'school', label: 'Курсы' },
+  { to: '/admin/tasks', icon: 'task_alt', label: 'Таски' },
   { to: '/admin/results', icon: 'bug_report', label: 'Результаты' },
   { to: '/admin/containers', icon: 'dns', label: 'Контейнеры' },
 ];

@@ -14,6 +14,10 @@ import CourseDetailPage from './pages/CourseDetailPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminResultsPage from './pages/admin/AdminResultsPage';
 import AdminContainersPage from './pages/admin/AdminContainersPage';
+import AdminCoursesPage from './pages/admin/AdminCoursesPage';
+import CourseEditorPage from './pages/admin/CourseEditorPage';
+import AdminTasksPage from './pages/admin/AdminTasksPage';
+import TaskEditorPage from './pages/admin/TaskEditorPage';
 import './main.css';
 
 function TrackIdRedirect() {
@@ -42,6 +46,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/courses" element={<AdminCoursesPage />} />
+            <Route path="/admin/courses/:id" element={<CourseEditorPage />} />
+            <Route path="/admin/tasks" element={<AdminTasksPage />} />
+            <Route path="/admin/tasks/new" element={<TaskEditorPage />} />
+            <Route path="/admin/tasks/:id" element={<TaskEditorPage />} />
             <Route path="/admin/results" element={<AdminResultsPage />} />
             <Route path="/admin/containers" element={<AdminContainersPage />} />
           </Route>
