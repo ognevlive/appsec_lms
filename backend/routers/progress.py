@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from auth import get_current_user
 from database import get_db
-from models import Task, TaskSubmission, SubmissionStatus, TaskType, User, UserRole
+from models import Course, Module, ModuleUnit, Task, TaskSubmission, SubmissionStatus, TaskType, User, UserRole
+from services.progression import is_module_locked
 
 router = APIRouter(prefix="/api/me", tags=["progress"], dependencies=[Depends(get_current_user)])
 
@@ -152,6 +154,37 @@ async def mark_viewed(
     task = task_result.scalar_one_or_none()
     if not task or task.type != TaskType.theory:
         raise HTTPException(status_code=404, detail="Theory task not found")
+
+    if user.role != UserRole.admin:
+        mu_result = await db.execute(
+            select(ModuleUnit)
+            .options(
+                selectinload(ModuleUnit.module)
+                .selectinload(Module.course)
+                .selectinload(Course.modules)
+                .selectinload(Module.units)
+            )
+            .where(ModuleUnit.task_id == body.task_id)
+        )
+        mus = mu_result.scalars().unique().all()
+        if mus:
+            stat_result = await db.execute(
+                select(TaskSubmission.task_id, TaskSubmission.status)
+                .where(TaskSubmission.user_id == user.id)
+                .order_by(TaskSubmission.submitted_at.desc())
+            )
+            statuses: dict[int, str] = {}
+            for tid, st in stat_result.all():
+                val = st.value if hasattr(st, "value") else st
+                if tid not in statuses or val == "success":
+                    statuses[tid] = val
+            if not any(
+                not is_module_locked(mu.module.course, mu.module, statuses)
+                for mu in mus
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN, detail="module_locked"
+                )
 
     existing = await db.execute(
         select(TaskSubmission).where(
