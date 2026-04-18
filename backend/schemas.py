@@ -126,33 +126,55 @@ class SubmissionOut(BaseModel):
         from_attributes = True
 
 
-# --- Track ---
-class TrackStepOut(BaseModel):
+# --- Course / Module / Unit ---
+class UnitOut(BaseModel):
     id: int
     task_id: int
-    step_order: int
+    task_slug: str
     task_title: str
     task_type: TaskType
-    task_difficulty: str | None
-    user_status: str | None
+    task_difficulty: str | None = None
+    content_kind: str | None = None
+    unit_order: int
+    is_required: bool
+    user_status: str | None = None
 
     class Config:
         from_attributes = True
 
 
-class TrackOut(BaseModel):
+class ModuleOut(BaseModel):
     id: int
     title: str
+    description: str
+    order: int
+    estimated_hours: int | None
+    learning_outcomes: list[str]
+    config: dict
+    is_locked: bool
+    unit_count: int
+    completed_unit_count: int
+    units: list[UnitOut]
+
+    class Config:
+        from_attributes = True
+
+
+class CourseOut(BaseModel):
+    id: int
     slug: str
+    title: str
     description: str
     order: int
     config: dict
-    step_count: int
-    completed_count: int
+    module_count: int
+    unit_count: int
+    completed_unit_count: int
+    progress_pct: int
 
 
-class TrackDetail(TrackOut):
-    steps: list[TrackStepOut]
+class CourseDetail(CourseOut):
+    modules: list[ModuleOut]
 
 
 # --- GitLab ---
