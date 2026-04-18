@@ -62,6 +62,7 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(Integer, primary_key=True)
+    slug = Column(String(150), unique=True, nullable=True, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, default="")
     type = Column(Enum(TaskType), nullable=False)
