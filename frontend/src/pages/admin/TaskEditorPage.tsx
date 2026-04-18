@@ -5,6 +5,7 @@ import { api } from '../../api';
 import Button from '../../components/Button';
 import FormInput from '../../components/FormInput';
 import FormSelect from '../../components/FormSelect';
+import QuizForm from '../../components/admin/task-forms/QuizForm';
 import TheoryForm from '../../components/admin/task-forms/TheoryForm';
 import type { AdminTask, TaskType } from '../../types';
 
@@ -189,6 +190,8 @@ function TypeSpecificForm({
   switch (task.type) {
     case 'theory':
       return <TheoryForm config={cfg} update={updateConfig} />;
+    case 'quiz':
+      return <QuizForm config={cfg} update={updateConfig} />;
     default:
       return (
         <pre className="bg-surface-container-low p-4 text-xs">
