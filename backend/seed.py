@@ -85,6 +85,7 @@ async def seed_tasks(tasks_dir: str = "/tasks"):
 
     # Load courses
     course_files = glob.glob(os.path.join(tasks_dir, "courses", "*.yaml"))
+    missing_slugs: list[str] = []
     if course_files:
         async with async_session() as db:
             for filepath in sorted(course_files):
@@ -137,6 +138,7 @@ async def seed_tasks(tasks_dir: str = "/tasks"):
                             select(Task).where(Task.slug == task_slug)
                         )).scalar_one_or_none()
                         if not task:
+                            missing_slugs.append(task_slug)
                             print(f"    WARNING: task slug not found: {task_slug}")
                             continue
                         db.add(ModuleUnit(
@@ -146,6 +148,12 @@ async def seed_tasks(tasks_dir: str = "/tasks"):
                             is_required=unit_data.get("required", True),
                         ))
             await db.commit()
+
+    if missing_slugs:
+        print(
+            f"WARNING: {len(missing_slugs)} task slug(s) referenced from course YAML "
+            f"were not found in DB: {sorted(set(missing_slugs))}"
+        )
 
     print("Done!")
 

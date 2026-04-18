@@ -42,7 +42,11 @@ async def test_seed_is_idempotent():
     await seed_tasks(REPO_TASKS)
     async with async_session() as db:
         mus_a = (await db.execute(select(ModuleUnit))).scalars().all()
+        courses_a = (await db.execute(select(Course))).scalars().all()
     await seed_tasks(REPO_TASKS)
     async with async_session() as db:
         mus_b = (await db.execute(select(ModuleUnit))).scalars().all()
+        courses_b = (await db.execute(select(Course))).scalars().all()
+    assert len(mus_a) > 0, "seed should produce module_units; zero indicates broken slug lookup"
     assert len(mus_a) == len(mus_b)
+    assert len(courses_a) == len(courses_b)
