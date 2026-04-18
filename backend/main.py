@@ -1,16 +1,19 @@
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
 
+from alembic import command as alembic_command
+from alembic.config import Config as AlembicConfig
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select, text
+from sqlalchemy import select
 
 from auth import hash_password
 from config import settings
-from database import engine, async_session
-from models import Base, User, UserRole
+from database import async_session
+from models import User, UserRole
 from routers import admin, auth_router, ctf, gitlab_tasks, progress, quiz, tasks, tracks
 from routers.gitlab_tasks import init_gitlab_client
 from services.scheduler import cleanup_expired_containers
@@ -19,6 +22,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 scheduler = AsyncIOScheduler()
+
+
+def _run_migrations() -> None:
+    ini_path = os.path.join(os.path.dirname(__file__), "alembic.ini")
+    cfg = AlembicConfig(ini_path)
+    cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "alembic"))
+    alembic_command.upgrade(cfg, "head")
 
 
 async def create_default_admin():
@@ -39,13 +49,8 @@ async def create_default_admin():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: create tables first, then apply migrations
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    async with engine.begin() as conn:
-        await conn.execute(text("ALTER TYPE tasktype ADD VALUE IF NOT EXISTS 'theory'"))
-    async with engine.begin() as conn:
-        await conn.execute(text("ALTER TYPE tasktype ADD VALUE IF NOT EXISTS 'ssh_lab'"))
+    # Apply DB migrations synchronously on startup
+    await asyncio.to_thread(_run_migrations)
     await create_default_admin()
 
     # Init GitLab client if configured
