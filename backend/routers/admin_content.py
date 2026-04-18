@@ -2,7 +2,7 @@
 
 Защищён require_admin. Все endpoints под /api/admin/content.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
@@ -23,6 +23,7 @@ from schemas_admin import (
     UnitCreate,
     UnitUpdate,
 )
+from services.bundle import BundleError, open_bundle, pack_task, read_yaml
 from services.flag_hash import apply_flag_to_config
 
 router = APIRouter(
@@ -354,3 +355,71 @@ async def delete_task(task_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=409, detail={"message": "Task is in use", "usage": usage})
     await db.delete(task)
     await db.commit()
+
+
+def _task_manifest(task: Task) -> dict:
+    return {
+        "slug": task.slug,
+        "title": task.title,
+        "description": task.description or "",
+        "type": task.type.value,
+        "order": task.order,
+        "config": task.config or {},
+    }
+
+
+@router.get("/tasks/{task_id}/export")
+async def export_task(task_id: int, db: AsyncSession = Depends(get_db)):
+    task = await db.get(Task, task_id)
+    if not task:
+        raise HTTPException(404, "Task not found")
+    blob = pack_task(_task_manifest(task))
+    return Response(
+        content=blob,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="task-{task.slug}.zip"'},
+    )
+
+
+async def _upsert_task_from_manifest(manifest: dict, admin_id: int,
+                                       db: AsyncSession) -> Task:
+    from pydantic import ValidationError
+    try:
+        parsed = TaskCreate.model_validate(manifest)
+    except ValidationError as e:
+        raise HTTPException(422, f"Invalid task manifest: {e}")
+    cfg = apply_flag_to_config(parsed.config or {})
+    existing = await db.execute(select(Task).where(Task.slug == parsed.slug))
+    task = existing.scalar_one_or_none()
+    if task:
+        task.title = parsed.title
+        task.description = parsed.description
+        task.order = parsed.order
+        task.type = parsed.type
+        task.config = cfg
+        task.author_id = admin_id
+    else:
+        task = Task(
+            slug=parsed.slug, title=parsed.title, description=parsed.description,
+            order=parsed.order, type=parsed.type, config=cfg, author_id=admin_id,
+        )
+        db.add(task)
+    return task
+
+
+@router.post("/tasks/import", status_code=201, response_model=TaskOutAdmin)
+async def import_task(
+    file: UploadFile = File(...),
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    raw = await file.read()
+    try:
+        zf = open_bundle(raw)
+        manifest = read_yaml(zf, "manifest.yaml")
+    except BundleError as e:
+        raise HTTPException(400, str(e))
+    task = await _upsert_task_from_manifest(manifest, admin.id, db)
+    await db.commit()
+    await db.refresh(task)
+    return _task_out(task)
