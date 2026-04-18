@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -35,6 +35,13 @@ export default function ChallengeDetailsPage() {
   const refreshSubmissions = () => {
     api.mySubmissions(taskId).then(setSubmissions).catch(() => {});
   };
+
+  const markedRef = useRef(false);
+  useEffect(() => {
+    if (!task || task.type !== 'theory' || markedRef.current) return;
+    markedRef.current = true;
+    api.markViewed(task.id).catch(() => {});
+  }, [task]);
 
   if (loading || !task) {
     return (
@@ -129,7 +136,7 @@ export default function ChallengeDetailsPage() {
             <GitlabSection taskId={taskId} />
           )}
           {task.type === 'theory' && (
-            <TheorySection content={task.config?.content || ''} />
+            <TheorySection config={task.config} />
           )}
           {task.type === 'ssh_lab' && (
             <SshLabSection taskId={taskId} config={task.config} onSubmit={refreshSubmissions} />
