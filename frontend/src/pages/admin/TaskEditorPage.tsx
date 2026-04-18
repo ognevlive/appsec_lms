@@ -5,7 +5,10 @@ import { api } from '../../api';
 import Button from '../../components/Button';
 import FormInput from '../../components/FormInput';
 import FormSelect from '../../components/FormSelect';
+import CtfForm from '../../components/admin/task-forms/CtfForm';
+import GitlabForm from '../../components/admin/task-forms/GitlabForm';
 import QuizForm from '../../components/admin/task-forms/QuizForm';
+import SshLabForm from '../../components/admin/task-forms/SshLabForm';
 import TheoryForm from '../../components/admin/task-forms/TheoryForm';
 import type { AdminTask, TaskType } from '../../types';
 
@@ -192,6 +195,12 @@ function TypeSpecificForm({
       return <TheoryForm config={cfg} update={updateConfig} />;
     case 'quiz':
       return <QuizForm config={cfg} update={updateConfig} />;
+    case 'ctf':
+      return <CtfForm config={cfg} update={updateConfig} />;
+    case 'ssh_lab':
+      return <SshLabForm config={cfg} update={updateConfig} />;
+    case 'gitlab':
+      return <GitlabForm config={cfg} update={updateConfig} />;
     default:
       return (
         <pre className="bg-surface-container-low p-4 text-xs">
