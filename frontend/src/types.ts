@@ -105,27 +105,48 @@ export interface PaginatedResponse<T> {
 
 export type TaskStatuses = Record<number, string>;
 
-export interface TrackStepItem {
+export type TaskKind = 'quiz' | 'ctf' | 'gitlab' | 'theory' | 'ssh_lab';
+
+export interface UnitItem {
   id: number;
   task_id: number;
-  step_order: number;
+  task_slug: string;
   task_title: string;
-  task_type: 'quiz' | 'ctf' | 'gitlab' | 'theory' | 'ssh_lab';
+  task_type: TaskKind;
   task_difficulty: string | null;
-  user_status: string | null;
+  content_kind: 'text' | 'video' | 'mixed' | null;
+  unit_order: number;
+  is_required: boolean;
+  user_status: 'success' | 'fail' | 'pending' | null;
 }
 
-export interface TrackItem {
+export interface ModuleItem {
   id: number;
   title: string;
+  description: string;
+  order: number;
+  estimated_hours: number | null;
+  learning_outcomes: string[];
+  config: Record<string, any>;
+  is_locked: boolean;
+  unit_count: number;
+  completed_unit_count: number;
+  units: UnitItem[];
+}
+
+export interface CourseItem {
+  id: number;
   slug: string;
+  title: string;
   description: string;
   order: number;
   config: Record<string, any>;
-  step_count: number;
-  completed_count: number;
+  module_count: number;
+  unit_count: number;
+  completed_unit_count: number;
+  progress_pct: number;
 }
 
-export interface TrackDetail extends TrackItem {
-  steps: TrackStepItem[];
+export interface CourseDetail extends CourseItem {
+  modules: ModuleItem[];
 }
