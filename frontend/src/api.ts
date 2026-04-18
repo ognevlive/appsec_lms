@@ -108,9 +108,18 @@ export const api = {
 
   getProgress: () => request<any>('/me/progress'),
 
-  // Tracks
-  listTracks: () => request<any[]>('/tracks'),
-  getTrack: (id: number) => request<any>(`/tracks/${id}`),
+  // Courses
+  listCourses: () => request<import('./types').CourseItem[]>('/courses'),
+  getCourse: (slugOrId: string | number) =>
+    request<import('./types').CourseDetail>(`/courses/${slugOrId}`),
+  getModule: (id: number) =>
+    request<import('./types').ModuleItem>(`/modules/${id}`),
+
+  markViewed: (taskId: number) =>
+    request<{ ok: boolean }>('/me/progress/viewed', {
+      method: 'POST',
+      body: JSON.stringify({ task_id: taskId }),
+    }),
 
   listUsersPaginated: (params?: { page?: number; per_page?: number }) => {
     const searchParams = new URLSearchParams();
