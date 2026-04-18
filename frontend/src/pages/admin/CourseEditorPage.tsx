@@ -171,6 +171,7 @@ export default function CourseEditorPage() {
     if (!e.over || e.active.id === e.over.id || !course) return;
     const oldIdx = modules.findIndex((m) => m.id === e.active.id);
     const newIdx = modules.findIndex((m) => m.id === e.over!.id);
+    const snapshot = modules;
     const next = arrayMove(modules, oldIdx, newIdx);
     setModules(next);
     try {
@@ -179,6 +180,7 @@ export default function CourseEditorPage() {
         next.map((m, i) => ({ id: m.id, order: i + 1 })),
       );
     } catch (err: any) {
+      setModules(snapshot);
       setError(err.message);
     }
   };

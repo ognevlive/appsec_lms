@@ -32,6 +32,7 @@ export default function ModuleCard({
   const [tasks, setTasks] = useState<Record<number, AdminTask>>({});
   const [picker, setPicker] = useState(false);
   const [local, setLocal] = useState(module);
+  const [loadError, setLoadError] = useState('');
   const sensors = useSensors(useSensor(PointerSensor));
 
   useEffect(() => {
@@ -40,24 +41,31 @@ export default function ModuleCard({
 
   // Load units + their associated tasks
   useEffect(() => {
-    api.adminContent.getModuleFull(module.id).then((r) => {
-      setUnits(r.units);
-      const tmap: Record<number, AdminTask> = {};
-      r.units.forEach((u) => {
-        tmap[u.task_id] = {
-          id: u.task_id,
-          slug: u.task_slug,
-          title: u.task_title,
-          type: u.task_type,
-          description: '',
-          order: 0,
-          config: {},
-          author_id: null,
-          updated_at: '',
-        } as AdminTask;
+    api.adminContent
+      .getModuleFull(module.id)
+      .then((r) => {
+        setUnits(r.units);
+        const tmap: Record<number, AdminTask> = {};
+        r.units.forEach((u) => {
+          tmap[u.task_id] = {
+            id: u.task_id,
+            slug: u.task_slug,
+            title: u.task_title,
+            type: u.task_type,
+            description: '',
+            order: 0,
+            config: {},
+            author_id: null,
+            updated_at: '',
+          } as AdminTask;
+        });
+        setTasks(tmap);
+        setLoadError('');
+      })
+      .catch((e: any) => {
+        console.error(e);
+        setLoadError(e?.message || 'Не удалось загрузить юниты модуля');
       });
-      setTasks(tmap);
-    });
   }, [module.id]);
 
   const saveMeta = async () => {
@@ -85,12 +93,18 @@ export default function ModuleCard({
     if (!e.over || e.active.id === e.over.id) return;
     const oldIdx = units.findIndex((u) => u.id === e.active.id);
     const newIdx = units.findIndex((u) => u.id === e.over!.id);
+    const snapshot = units;
     const next = arrayMove(units, oldIdx, newIdx);
     setUnits(next);
-    await api.adminContent.reorderUnits(
-      module.id,
-      next.map((u, i) => ({ id: u.id, order: i + 1 })),
-    );
+    try {
+      await api.adminContent.reorderUnits(
+        module.id,
+        next.map((u, i) => ({ id: u.id, order: i + 1 })),
+      );
+    } catch (err) {
+      console.error(err);
+      setUnits(snapshot);
+    }
   };
 
   return (
@@ -133,6 +147,7 @@ export default function ModuleCard({
       </div>
 
       <div className="space-y-2">
+        {loadError && <div className="text-error text-xs">{loadError}</div>}
         <DndContext sensors={sensors} onDragEnd={onDragEnd}>
           <SortableContext
             items={units.map((u) => u.id)}
