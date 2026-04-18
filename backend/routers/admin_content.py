@@ -3,6 +3,7 @@
 Защищён require_admin. Все endpoints под /api/admin/content.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +11,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth import require_admin
 from database import get_db
 from models import Course, Module, ModuleUnit, Task, TaskType, User
-from schemas_admin import TaskCreate, TaskOutAdmin, TaskUpdate
+from schemas_admin import (
+    CourseCreate,
+    CourseUpdate,
+    ModuleCreate,
+    ModuleUpdate,
+    ReorderItem,
+    TaskCreate,
+    TaskOutAdmin,
+    TaskUpdate,
+    UnitCreate,
+    UnitUpdate,
+)
 from services.flag_hash import apply_flag_to_config
 
 router = APIRouter(
@@ -35,9 +47,66 @@ def _task_out(task: Task, usage: list[dict] | None = None) -> dict:
     }
 
 
-@router.get("/courses")
-async def list_courses_admin():
-    return []
+class CourseOutAdmin(BaseModel):
+    id: int
+    slug: str
+    title: str
+    description: str
+    order: int
+    config: dict
+    is_visible: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+@router.post("/courses", status_code=201, response_model=CourseOutAdmin)
+async def create_course(body: CourseCreate, db: AsyncSession = Depends(get_db)):
+    course = Course(
+        slug=body.slug, title=body.title, description=body.description,
+        order=body.order, config=body.config, is_visible=False,
+    )
+    db.add(course)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, "Slug already exists")
+    await db.refresh(course)
+    return course
+
+
+@router.get("/courses", response_model=list[CourseOutAdmin])
+async def list_courses_admin(db: AsyncSession = Depends(get_db)):
+    rows = await db.execute(select(Course).order_by(Course.order, Course.id))
+    return rows.scalars().all()
+
+
+@router.patch("/courses/{course_id}", response_model=CourseOutAdmin)
+async def update_course(course_id: int, body: CourseUpdate,
+                         db: AsyncSession = Depends(get_db)):
+    course = await db.get(Course, course_id)
+    if not course:
+        raise HTTPException(404, "Course not found")
+    for k, v in body.model_dump(exclude_unset=True).items():
+        setattr(course, k, v)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, "Slug already exists")
+    await db.refresh(course)
+    return course
+
+
+@router.delete("/courses/{course_id}", status_code=204)
+async def delete_course(course_id: int, db: AsyncSession = Depends(get_db)):
+    course = await db.get(Course, course_id)
+    if not course:
+        raise HTTPException(404, "Course not found")
+    if course.is_visible:
+        raise HTTPException(409, "Course must be hidden before deletion")
+    await db.delete(course)
+    await db.commit()
 
 
 @router.get("/tasks", response_model=list[TaskOutAdmin])
