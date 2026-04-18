@@ -1,0 +1,40 @@
+title: 'OWASP Top 10: Полный курс'
+slug: owasp-top10-track
+description: Комплексный трек по OWASP Top 10. Охватывает теорию, SQL-инъекции, XSS,
+  IDOR, JWT-атаки, CSRF и командные инъекции.
+order: 3
+config:
+  icon: shield
+modules:
+- title: Основы
+  order: 1
+  estimated_hours: null
+  learning_outcomes: []
+  units:
+  - task_slug: owasp-top-10-2021
+    order: 1
+    required: true
+  - task_slug: sql-injection
+    order: 2
+    required: true
+  - task_slug: sql-injection
+    order: 3
+    required: true
+  - task_slug: cross-site-scripting
+    order: 4
+    required: true
+  - task_slug: xss-stored-cookie
+    order: 5
+    required: true
+  - task_slug: idor-api
+    order: 6
+    required: true
+  - task_slug: jwt-bypass
+    order: 7
+    required: true
+  - task_slug: csrf
+    order: 8
+    required: true
+  - task_slug: command-injection-ping-service
+    order: 9
+    required: true
