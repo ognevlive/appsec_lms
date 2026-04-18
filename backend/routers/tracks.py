@@ -1,109 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException
+"""Legacy /api/tracks/* endpoints — temporary 308 redirects to /api/courses/*.
+
+Delete this file + its import after one release cycle.
+"""
+from fastapi import APIRouter, Depends
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import get_current_user
 from database import get_db
-from models import Track, TrackStep, TaskSubmission, TaskType, User
-from schemas import TrackOut, TrackDetail, TrackStepOut
+from models import Course
 
-router = APIRouter(prefix="/api/tracks", tags=["tracks"], dependencies=[Depends(get_current_user)])
-
-
-async def _get_user_statuses(user_id: int, db: AsyncSession) -> dict[int, str]:
-    """Return best submission status per task_id for the given user."""
-    result = await db.execute(
-        select(TaskSubmission.task_id, TaskSubmission.status)
-        .where(TaskSubmission.user_id == user_id)
-        .order_by(TaskSubmission.submitted_at.desc())
-    )
-    statuses: dict[int, str] = {}
-    for task_id, status in result.all():
-        if task_id not in statuses:
-            statuses[task_id] = status.value
-        if status.value == "success":
-            statuses[task_id] = "success"
-    return statuses
+router = APIRouter(prefix="/api/tracks", tags=["tracks-legacy"])
 
 
-@router.get("", response_model=list[TrackOut])
-async def list_tracks(
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(
-        select(Track)
-        .options(selectinload(Track.steps).selectinload(TrackStep.task))
-        .order_by(Track.order, Track.id)
-    )
-    tracks = result.scalars().all()
-
-    statuses = await _get_user_statuses(user.id, db)
-
-    out = []
-    for track in tracks:
-        step_count = sum(1 for step in track.steps if step.task.type != TaskType.theory)
-        completed_count = sum(
-            1 for step in track.steps
-            if step.task.type != TaskType.theory and statuses.get(step.task_id) == "success"
-        )
-        out.append(
-            TrackOut(
-                id=track.id,
-                title=track.title,
-                slug=track.slug,
-                description=track.description,
-                order=track.order,
-                config=track.config or {},
-                step_count=step_count,
-                completed_count=completed_count,
-            )
-        )
-    return out
+@router.get("", include_in_schema=False)
+async def list_tracks_redirect():
+    return RedirectResponse(url="/api/courses", status_code=308)
 
 
-@router.get("/{track_id}", response_model=TrackDetail)
-async def get_track(
+@router.get("/{track_id}", include_in_schema=False)
+async def get_track_redirect(
     track_id: int,
-    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _user=Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Track)
-        .options(selectinload(Track.steps).selectinload(TrackStep.task))
-        .where(Track.id == track_id)
-    )
-    track = result.scalar_one_or_none()
-    if not track:
-        raise HTTPException(status_code=404, detail="Track not found")
-
-    statuses = await _get_user_statuses(user.id, db)
-
-    steps = [
-        TrackStepOut(
-            id=step.id,
-            task_id=step.task_id,
-            step_order=step.step_order,
-            task_title=step.task.title,
-            task_type=step.task.type,
-            task_difficulty=step.task.config.get("difficulty") if step.task.config else None,
-            user_status=statuses.get(step.task_id),
-        )
-        for step in track.steps
-    ]
-
-    step_count = sum(1 for s in steps if s.task_type != TaskType.theory)
-    completed_count = sum(1 for s in steps if s.task_type != TaskType.theory and s.user_status == "success")
-
-    return TrackDetail(
-        id=track.id,
-        title=track.title,
-        slug=track.slug,
-        description=track.description,
-        order=track.order,
-        config=track.config or {},
-        step_count=step_count,
-        completed_count=completed_count,
-        steps=steps,
-    )
+    # Resolve the same id in courses (since ids were preserved in migration 0003)
+    result = await db.execute(select(Course.slug).where(Course.id == track_id))
+    slug = result.scalar_one_or_none()
+    if not slug:
+        return RedirectResponse(url="/api/courses", status_code=308)
+    return RedirectResponse(url=f"/api/courses/{slug}", status_code=308)
