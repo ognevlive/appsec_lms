@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth import require_admin
 from database import get_db
 from models import Course, Module, ModuleUnit, Task, TaskType, User
-from schemas_admin import TaskCreate, TaskOutAdmin
+from schemas_admin import TaskCreate, TaskOutAdmin, TaskUpdate
 from services.flag_hash import apply_flag_to_config
 
 router = APIRouter(
@@ -105,4 +105,29 @@ async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
     task = await db.get(Task, task_id)
     if not task:
         raise HTTPException(404, "Task not found")
+    return _task_out(task, usage=await _usage_for_task(task_id, db))
+
+
+@router.patch("/tasks/{task_id}", response_model=TaskOutAdmin)
+async def update_task(
+    task_id: int,
+    body: TaskUpdate,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    task = await db.get(Task, task_id)
+    if not task:
+        raise HTTPException(404, "Task not found")
+    data = body.model_dump(exclude_unset=True)
+    if "config" in data:
+        data["config"] = apply_flag_to_config(data["config"])
+    for field, value in data.items():
+        setattr(task, field, value)
+    task.author_id = admin.id
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, "Slug already exists")
+    await db.refresh(task)
     return _task_out(task, usage=await _usage_for_task(task_id, db))

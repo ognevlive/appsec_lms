@@ -165,3 +165,23 @@ async def test_get_task_404():
         r = await c.get("/api/admin/content/tasks/999999",
                         headers={"Authorization": f"Bearer {token}"})
         assert r.status_code == 404
+
+
+async def test_patch_task_updates_fields_and_hashes_flag():
+    token = await _admin_token()
+    suffix = uuid.uuid4().hex[:6]
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        cr = await c.post("/api/admin/content/tasks",
+                          json={"slug": f"p-{suffix}", "title": "Before", "type": "ctf",
+                                "config": {"docker_image": "a", "flag_hash": "old"}},
+                          headers={"Authorization": f"Bearer {token}"})
+        tid = cr.json()["id"]
+        r = await c.patch(f"/api/admin/content/tasks/{tid}",
+                          json={"title": "After",
+                                "config": {"docker_image": "a", "flag": "newflag"}},
+                          headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 200
+        out = r.json()
+        assert out["title"] == "After"
+        assert "flag" not in out["config"]
+        assert out["config"]["flag_hash"] != "old"
