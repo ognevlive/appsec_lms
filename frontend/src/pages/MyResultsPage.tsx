@@ -143,7 +143,7 @@ export default function MyResultsPage() {
                             : 'bg-secondary/10 text-secondary'
                         }`}
                       >
-                        {item.status === 'success' ? 'Успех' : item.status === 'fail' ? 'Ошибка' : 'Ожидание'}
+                        {item.status === 'success' ? 'Успех' : item.status === 'fail' ? 'Ошибка' : 'На проверке'}
                       </span>
                     </td>
                   </tr>

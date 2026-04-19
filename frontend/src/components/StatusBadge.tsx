@@ -21,9 +21,9 @@ const config = {
   pending: {
     bg: 'bg-secondary/10',
     text: 'text-secondary',
-    label: 'В процессе',
-    icon: 'pending',
-    showIcon: false,
+    label: 'На проверке',
+    icon: 'hourglass_top',
+    showIcon: true,
   },
   available: {
     bg: 'bg-outline-variant/10',

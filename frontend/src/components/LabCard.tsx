@@ -10,13 +10,25 @@ interface LabCardProps {
 
 export default function LabCard({ task, status }: LabCardProps) {
   const isCompleted = status === 'success';
-  const badgeStatus = status === 'success' ? 'success' : status === 'fail' ? 'fail' : 'available';
+  const isPending = status === 'pending';
+  const badgeStatus =
+    status === 'success'
+      ? 'success'
+      : status === 'fail'
+        ? 'fail'
+        : status === 'pending'
+          ? 'pending'
+          : 'available';
 
   return (
     <Link to={`/challenges/${task.id}`}>
       <article
         className={`bg-[#1a1b26] border-l-2 ${
-          isCompleted ? 'border-primary' : 'border-outline-variant'
+          isCompleted
+            ? 'border-primary'
+            : isPending
+              ? 'border-secondary'
+              : 'border-outline-variant'
         } hover:border-2 hover:border-primary transition-all group flex flex-col p-6 relative overflow-hidden`}
       >
         <div className="flex justify-between items-start mb-6">
