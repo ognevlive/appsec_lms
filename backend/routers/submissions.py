@@ -14,7 +14,12 @@ from database import get_db
 from models import SubmissionFile, SubmissionStatus, Task, TaskSubmission, TaskType, User
 from schemas import SubmissionDetail, SubmissionFileOut
 from services.unlock_guard import require_unit_unlocked
-from services.uploads import absolute_stored_path, save_submission_files, validate_upload_config
+from services.uploads import (
+    absolute_stored_path,
+    delete_submission_files,
+    save_submission_files,
+    validate_upload_config,
+)
 
 router = APIRouter(prefix="/api/submissions", tags=["submissions"])
 
@@ -34,13 +39,18 @@ def _serialize(sub: TaskSubmission) -> SubmissionDetail:
     )
 
 
-async def _auto_grade(task: Task, submission: TaskSubmission, answer_text: str | None) -> None:
+async def _auto_grade(
+    task: Task,
+    submission: TaskSubmission,
+    answer_text: str | None,
+    review_mode: str,
+) -> None:
     """Compute preliminary auto grading into submission.details. Status set by caller."""
     details = dict(submission.details or {})
     if answer_text is not None:
         details["answer_text"] = answer_text
 
-    if task.type == TaskType.quiz:
+    if task.type == TaskType.quiz and review_mode == "auto":
         # Quiz answers are expected as JSON inside answer_text for this generic endpoint.
         import json
 
@@ -96,11 +106,15 @@ async def create_submission(
     # Validate counts/required up front (per-file size enforced during streaming).
     try:
         if uploads_enabled:
-            validate_upload_config(cfg, file_count=len(files), total_size_bytes=0)
+            validate_upload_config(cfg, file_count=len(files))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     is_manual = review_mode == "manual"
+    # Guard: auto mode only supports quiz tasks via this endpoint.
+    if not is_manual and task.type != TaskType.quiz:
+        raise HTTPException(status_code=400, detail="auto_unsupported_task_type")
+
     submission = TaskSubmission(
         user_id=user.id,
         task_id=task_id,
@@ -114,7 +128,7 @@ async def create_submission(
         if files:
             await save_submission_files(submission, cfg, files, db)
 
-        await _auto_grade(task, submission, answer_text)
+        await _auto_grade(task, submission, answer_text, review_mode)
 
         if not is_manual:
             # Auto-finalize: quiz -> success if full score; others currently not auto-passable via this endpoint
@@ -129,9 +143,11 @@ async def create_submission(
         await db.commit()
     except HTTPException:
         await db.rollback()
+        delete_submission_files(submission.id)
         raise
     except ValueError as e:
         await db.rollback()
+        delete_submission_files(submission.id)
         raise HTTPException(status_code=400, detail=str(e))
 
     # Reload with files

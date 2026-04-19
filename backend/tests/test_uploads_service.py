@@ -36,19 +36,19 @@ def test_sanitize_rejects_empty_after_clean():
 def test_validate_upload_config_rejects_disabled():
     cfg = {}
     with pytest.raises(ValueError, match="uploads_disabled"):
-        validate_upload_config(cfg, file_count=1, total_size_bytes=0)
+        validate_upload_config(cfg, file_count=1)
 
 
 def test_validate_upload_config_required_empty():
     cfg = {"file_upload": {"enabled": True, "required": True, "max_files": 5, "max_size_mb": 20, "allowed_ext": ["pdf"]}}
     with pytest.raises(ValueError, match="file_required"):
-        validate_upload_config(cfg, file_count=0, total_size_bytes=0)
+        validate_upload_config(cfg, file_count=0)
 
 
 def test_validate_upload_config_too_many_files():
     cfg = {"file_upload": {"enabled": True, "required": False, "max_files": 2, "max_size_mb": 20, "allowed_ext": ["pdf"]}}
     with pytest.raises(ValueError, match="too_many_files"):
-        validate_upload_config(cfg, file_count=3, total_size_bytes=0)
+        validate_upload_config(cfg, file_count=3)
 
 
 def test_absolute_stored_path_rejects_traversal(tmp_path, monkeypatch):
@@ -79,7 +79,7 @@ def test_validate_upload_config_rejects_disallowed_ext():
 def test_max_files_at_limit():
     cfg = {"file_upload": {"enabled": True, "required": False, "max_files": 3, "max_size_mb": 20, "allowed_ext": ["pdf"]}}
     # exactly max_files passes
-    validate_upload_config(cfg, file_count=3, total_size_bytes=0)
+    validate_upload_config(cfg, file_count=3)
     # max_files + 1 raises
     with pytest.raises(ValueError, match="too_many_files"):
-        validate_upload_config(cfg, file_count=4, total_size_bytes=0)
+        validate_upload_config(cfg, file_count=4)

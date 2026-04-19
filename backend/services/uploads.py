@@ -45,9 +45,7 @@ def _allowed_ext(cfg: dict) -> list[str]:
     return [e.lower() for e in cfg.get("allowed_ext") or settings.uploads_allowed_ext_default]
 
 
-def validate_upload_config(
-    task_config: dict, file_count: int, total_size_bytes: int
-) -> None:
+def validate_upload_config(task_config: dict, file_count: int) -> None:
     """Raise ValueError on limit violation. file_count=0 is allowed unless required."""
     cfg = _upload_cfg(task_config)
     if cfg is None:
@@ -107,7 +105,7 @@ async def save_submission_files(
             written = 0
             with dst.open("wb") as fp:
                 created_paths.append(dst)
-                while chunk := upload.file.read(_CHUNK_SIZE):
+                while chunk := await upload.read(_CHUNK_SIZE):
                     written += len(chunk)
                     if written > max_bytes:
                         raise ValueError(f"file_too_large:{original}")

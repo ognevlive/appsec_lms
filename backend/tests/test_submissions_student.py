@@ -1,11 +1,14 @@
 """Tests for student submissions router (file upload + manual review)."""
 import io
+import json
 import uuid
+from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from auth import create_token, hash_password
+from config import settings
 from database import async_session, engine
 from main import app
 from models import SubmissionFile, Task, TaskSubmission, TaskType, User, UserRole
@@ -172,3 +175,156 @@ async def test_other_student_cannot_fetch_submission():
             headers={"Authorization": f"Bearer {other_token}"},
         )
     assert resp.status_code == 403
+
+
+async def _seed_auto_quiz_correct() -> dict:
+    suffix = uuid.uuid4().hex[:8]
+    async with async_session() as db:
+        user = User(
+            username=f"student_quiz_ok_{suffix}",
+            password_hash=hash_password("x"),
+            full_name="StuQuiz",
+            role=UserRole.student,
+        )
+        task = Task(
+            slug=f"quiz-auto-ok-{suffix}",
+            title="Auto quiz ok",
+            description="",
+            type=TaskType.quiz,
+            config={
+                "questions": [
+                    {"id": 1, "text": "1+1?", "options": ["1", "2"], "correct_answer": "2"},
+                    {"id": 2, "text": "2+2?", "options": ["3", "4"], "correct_answer": "4"},
+                ]
+            },
+        )
+        db.add_all([user, task])
+        await db.commit()
+        await db.refresh(user)
+        await db.refresh(task)
+        return {
+            "user_id": user.id,
+            "task_id": task.id,
+            "token": create_token(user.id, user.role.value),
+        }
+
+
+async def test_auto_quiz_correct_answers_succeed():
+    seed = await _seed_auto_quiz_correct()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post(
+            f"/api/submissions/{seed['task_id']}",
+            data={"answer_text": json.dumps({"1": "2", "2": "4"})},
+            headers={"Authorization": f"Bearer {seed['token']}"},
+        )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["status"] == "success"
+    auto = body["details"]["auto_score"]
+    assert auto["score"] == auto["total"] == 2
+
+
+async def test_multiple_files_accepted():
+    seed = await _seed_manual_theory()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        files = [
+            ("files", ("a.pdf", io.BytesIO(b"%PDF-1.4 a"), "application/pdf")),
+            ("files", ("b.txt", io.BytesIO(b"hello"), "text/plain")),
+        ]
+        resp = await ac.post(
+            f"/api/submissions/{seed['task_id']}",
+            files=files,
+            headers={"Authorization": f"Bearer {seed['token']}"},
+        )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert len(body["files"]) == 2
+
+
+async def test_too_many_files_rejected():
+    seed = await _seed_manual_theory()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        files = [
+            ("files", (f"f{i}.pdf", io.BytesIO(b"%PDF-1.4"), "application/pdf"))
+            for i in range(4)
+        ]
+        resp = await ac.post(
+            f"/api/submissions/{seed['task_id']}",
+            files=files,
+            headers={"Authorization": f"Bearer {seed['token']}"},
+        )
+    assert resp.status_code == 400
+    assert "too_many_files" in resp.json()["detail"]
+
+
+async def test_admin_can_get_other_student_submission():
+    seed = await _seed_manual_theory()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        files = [("files", ("report.pdf", io.BytesIO(b"%PDF-1.4"), "application/pdf"))]
+        resp = await ac.post(
+            f"/api/submissions/{seed['task_id']}",
+            files=files,
+            headers={"Authorization": f"Bearer {seed['token']}"},
+        )
+    assert resp.status_code == 201, resp.text
+    sub_id = resp.json()["id"]
+
+    async with async_session() as db:
+        admin = User(
+            username=f"admin_sub_{uuid.uuid4().hex[:8]}",
+            password_hash=hash_password("x"),
+            full_name="Admin",
+            role=UserRole.admin,
+        )
+        db.add(admin)
+        await db.commit()
+        await db.refresh(admin)
+        admin_token = create_token(admin.id, admin.role.value)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.get(
+            f"/api/submissions/{sub_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["id"] == sub_id
+
+
+async def test_rollback_cleans_files_on_failure(monkeypatch):
+    seed = await _seed_manual_theory()
+
+    # Snapshot existing submission dirs so we only check ones created by this test.
+    uploads_root = Path(settings.uploads_dir)
+    before: set[str] = set()
+    if uploads_root.exists():
+        before = {p.name for p in uploads_root.iterdir() if p.is_dir()}
+
+    # Force _auto_grade to raise ValueError after files are saved on disk.
+    from routers import submissions as submissions_router
+
+    async def _boom(task, submission, answer_text, review_mode):
+        raise ValueError("boom")
+
+    monkeypatch.setattr(submissions_router, "_auto_grade", _boom)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        files = [("files", ("report.pdf", io.BytesIO(b"%PDF-1.4 fake"), "application/pdf"))]
+        resp = await ac.post(
+            f"/api/submissions/{seed['task_id']}",
+            files=files,
+            headers={"Authorization": f"Bearer {seed['token']}"},
+        )
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "boom"
+
+    # Only new directories created during this request count as our leak candidates.
+    after: set[str] = set()
+    if uploads_root.exists():
+        after = {p.name for p in uploads_root.iterdir() if p.is_dir()}
+    new_dirs = after - before
+    for name in new_dirs:
+        sub_dir = uploads_root / name
+        # The dir should have been cleaned up — either gone or empty.
+        assert not sub_dir.exists() or not any(sub_dir.iterdir()), (
+            f"orphan files left in {sub_dir} after rollback"
+        )
