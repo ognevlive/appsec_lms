@@ -35,6 +35,7 @@ services:
       - ./backend:/app
       - /var/run/docker.sock:/var/run/docker.sock
       - ./tasks:/tasks:ro
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -63,3 +64,4 @@ networks:
 
 volumes:
   postgres_data:
+  uploads_data:
