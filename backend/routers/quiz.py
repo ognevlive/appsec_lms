@@ -41,9 +41,7 @@ async def submit_quiz(
         raise HTTPException(status_code=404, detail="Quiz not found")
 
     questions = task.config.get("questions", [])
-    correct = []
-    wrong = []
-
+    correct, wrong = [], []
     for q in questions:
         qid = str(q["id"])
         user_answer = body.answers.get(qid, "")
@@ -54,13 +52,24 @@ async def submit_quiz(
 
     score = len(correct)
     total = len(questions)
-    passed = score == total
+    passed = total > 0 and score == total
+
+    is_manual = (task.config or {}).get("review_mode") == "manual"
+    auto_score = {"score": score, "total": total, "correct": correct, "wrong": wrong}
+    details = {"auto_score": auto_score} if is_manual else {
+        "score": score, "total": total, "correct": correct, "wrong": wrong,
+    }
+
+    if is_manual:
+        sub_status = SubmissionStatus.pending
+    else:
+        sub_status = SubmissionStatus.success if passed else SubmissionStatus.fail
 
     submission = TaskSubmission(
         user_id=user.id,
         task_id=task_id,
-        status=SubmissionStatus.success if passed else SubmissionStatus.fail,
-        details={"score": score, "total": total, "correct": correct, "wrong": wrong},
+        status=sub_status,
+        details=details,
     )
     db.add(submission)
     await db.commit()
