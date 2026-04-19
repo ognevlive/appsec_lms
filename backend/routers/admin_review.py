@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -19,6 +19,7 @@ from models import (
     SubmissionStatus,
     Task,
     TaskSubmission,
+    TaskType,
     User,
 )
 from schemas import (
@@ -38,18 +39,39 @@ router = APIRouter(
 
 
 def _is_manual(task: Task) -> bool:
-    return (task.config or {}).get("review_mode") == "manual"
+    cfg = task.config or {}
+    if cfg.get("review_mode") == "manual":
+        return True
+    # Implicit manual: non-quiz task exposes uploads or an answer field.
+    if task.type == TaskType.quiz:
+        return False
+    return bool((cfg.get("file_upload") or {}).get("enabled")) or bool(
+        (cfg.get("answer_text") or {}).get("enabled")
+    )
+
+
+# Matches the implicit-manual promotion in routers.submissions.create_submission.
+_MANUAL_PREDICATE = or_(
+    Task.config["review_mode"].astext == "manual",
+    and_(
+        Task.type != TaskType.quiz,
+        or_(
+            Task.config["file_upload"]["enabled"].astext == "true",
+            Task.config["answer_text"]["enabled"].astext == "true",
+        ),
+    ),
+)
 
 
 async def _pending_manual_base_query(db: AsyncSession):
-    """Base SELECT for pending submissions whose task has review_mode=manual."""
+    """Base SELECT for pending submissions whose task needs manual review."""
     q = (
         select(TaskSubmission, Task, User)
         .join(Task, TaskSubmission.task_id == Task.id)
         .join(User, TaskSubmission.user_id == User.id)
         .where(
             TaskSubmission.status == SubmissionStatus.pending,
-            Task.config["review_mode"].astext == "manual",
+            _MANUAL_PREDICATE,
         )
         .order_by(TaskSubmission.submitted_at.asc())
     )

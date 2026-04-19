@@ -34,8 +34,10 @@ def _run_migrations() -> None:
 async def create_default_admin():
     """Create default admin user if none exists."""
     async with async_session() as db:
-        result = await db.execute(select(User).where(User.role == UserRole.admin))
-        if not result.scalar_one_or_none():
+        result = await db.execute(
+            select(User).where(User.role == UserRole.admin).limit(1)
+        )
+        if not result.scalar():
             admin_user = User(
                 username="admin",
                 password_hash=hash_password("admin"),
