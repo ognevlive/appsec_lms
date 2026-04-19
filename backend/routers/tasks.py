@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from auth import get_current_user
 from database import get_db
 from models import Task, TaskSubmission, User
-from schemas import SubmissionOut, TaskCatalogOut, TaskDetail, TheoryRef
+from schemas import SubmissionDetail, SubmissionFileOut, SubmissionOut, TaskCatalogOut, TaskDetail, TheoryRef
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"], dependencies=[Depends(get_current_user)])
 
@@ -81,7 +82,7 @@ async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.get("/{task_id}/submissions", response_model=list[SubmissionOut])
+@router.get("/{task_id}/submissions", response_model=list[SubmissionDetail])
 async def my_submissions(
     task_id: int,
     user: User = Depends(get_current_user),
@@ -89,7 +90,23 @@ async def my_submissions(
 ):
     result = await db.execute(
         select(TaskSubmission)
+        .options(selectinload(TaskSubmission.files))
         .where(TaskSubmission.task_id == task_id, TaskSubmission.user_id == user.id)
         .order_by(TaskSubmission.submitted_at.desc())
     )
-    return result.scalars().all()
+    subs = result.scalars().all()
+    return [
+        SubmissionDetail(
+            id=s.id,
+            user_id=s.user_id,
+            task_id=s.task_id,
+            status=s.status,
+            details=s.details or {},
+            submitted_at=s.submitted_at,
+            reviewer_id=s.reviewer_id,
+            reviewed_at=s.reviewed_at,
+            review_comment=s.review_comment,
+            files=[SubmissionFileOut.model_validate(f) for f in s.files],
+        )
+        for s in subs
+    ]
