@@ -27,6 +27,13 @@ export interface TaskDetail extends TaskCatalogItem {
   theory_refs: TheoryRef[];
 }
 
+export interface SubmissionFile {
+  id: number;
+  filename: string;
+  size_bytes?: number;
+  content_type?: string | null;
+}
+
 export interface Submission {
   id: number;
   user_id: number;
@@ -34,6 +41,10 @@ export interface Submission {
   status: 'pending' | 'success' | 'fail';
   details: Record<string, any>;
   submitted_at: string;
+  reviewer_id?: number | null;
+  reviewed_at?: string | null;
+  review_comment?: string | null;
+  files?: SubmissionFile[];
 }
 
 export interface ContainerInfo {

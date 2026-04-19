@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -10,6 +10,8 @@ import CtfSection from '../sections/CtfSection';
 import GitlabSection from '../sections/GitlabSection';
 import TheorySection from '../sections/TheorySection';
 import SshLabSection from '../sections/SshLabSection';
+import FileUploader from '../components/FileUploader';
+import SubmissionHistory from '../components/SubmissionHistory';
 import { Md, MdInline } from '../components/Md';
 import type { TaskDetail, Submission } from '../types';
 
@@ -35,6 +37,44 @@ export default function ChallengeDetailsPage() {
   const refreshSubmissions = () => {
     api.mySubmissions(taskId).then(setSubmissions).catch(() => {});
   };
+
+  const uploadCfg = (task?.config?.file_upload ?? null) as
+    | { enabled: boolean; max_files: number; max_size_mb: number; allowed_ext: string[]; required: boolean }
+    | null;
+  const answerCfg = (task?.config?.answer_text ?? { enabled: false, required: false }) as
+    { enabled: boolean; required: boolean };
+  const isManual = task?.config?.review_mode === 'manual';
+  const needsReviewBlock = (uploadCfg && uploadCfg.enabled) || isManual;
+
+  const [files, setFiles] = useState<File[]>([]);
+  const [answer, setAnswer] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const latestSubmission = useMemo(
+    () => (submissions && submissions.length ? submissions[0] : null),
+    [submissions]
+  );
+  const canSubmit = !latestSubmission || latestSubmission.status === 'fail';
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!task) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const form = new FormData();
+      if (answer) form.append('answer_text', answer);
+      files.forEach((f) => form.append('files', f));
+      await api.submitTask(task.id, form);
+      // reload
+      window.location.reload();
+    } catch (err: any) {
+      setSubmitError(err.message || 'Ошибка отправки');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   const markedRef = useRef(false);
   useEffect(() => {
@@ -140,6 +180,71 @@ export default function ChallengeDetailsPage() {
           )}
           {task.type === 'ssh_lab' && (
             <SshLabSection taskId={taskId} config={task.config} onSubmit={refreshSubmissions} />
+          )}
+
+          {needsReviewBlock && (
+            <section className="mt-6 space-y-3">
+              <h3 className="text-lg font-medium">Сдача работы</h3>
+
+              {latestSubmission && (
+                <div
+                  className={`rounded px-4 py-3 text-sm ${
+                    latestSubmission.status === 'pending'
+                      ? 'bg-yellow-500/10 text-yellow-300'
+                      : latestSubmission.status === 'success'
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-red-500/10 text-red-400'
+                  }`}
+                >
+                  {latestSubmission.status === 'pending' && 'Работа отправлена. Ожидает проверки преподавателем.'}
+                  {latestSubmission.status === 'success' && 'Зачтено.'}
+                  {latestSubmission.status === 'fail' && 'Не зачтено. Можно отправить ещё раз.'}
+                  {latestSubmission.review_comment && (
+                    <p className="mt-1 whitespace-pre-wrap">{latestSubmission.review_comment}</p>
+                  )}
+                </div>
+              )}
+
+              {canSubmit && (
+                <form onSubmit={handleSubmit} className="space-y-3">
+                  {answerCfg.enabled && (
+                    <textarea
+                      className="w-full rounded bg-surface-container-low p-3 text-sm"
+                      rows={4}
+                      placeholder={answerCfg.required ? 'Ответ (обязательно)' : 'Ответ (опционально)'}
+                      value={answer}
+                      onChange={(e) => setAnswer(e.target.value)}
+                    />
+                  )}
+                  {uploadCfg && uploadCfg.enabled && (
+                    <FileUploader
+                      maxFiles={uploadCfg.max_files}
+                      maxSizeMb={uploadCfg.max_size_mb}
+                      allowedExt={uploadCfg.allowed_ext}
+                      required={uploadCfg.required}
+                      files={files}
+                      onChange={setFiles}
+                      disabled={submitting}
+                    />
+                  )}
+                  {submitError && <p className="text-sm text-red-400">{submitError}</p>}
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-4 py-2 rounded bg-primary text-on-primary text-sm disabled:opacity-50"
+                  >
+                    {submitting ? 'Отправка…' : 'Отправить на проверку'}
+                  </button>
+                </form>
+              )}
+
+              {submissions && submissions.length > 1 && (
+                <SubmissionHistory
+                  items={submissions}
+                  downloadUrl={(sid, fid) => api.fileDownloadUrl(sid, fid)}
+                />
+              )}
+            </section>
           )}
         </div>
 
