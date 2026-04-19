@@ -154,6 +154,7 @@ class ModuleOut(BaseModel):
     is_locked: bool
     unit_count: int
     completed_unit_count: int
+    pending_unit_count: int = 0
     units: list[UnitOut]
 
     class Config:
@@ -170,6 +171,7 @@ class CourseOut(BaseModel):
     module_count: int
     unit_count: int
     completed_unit_count: int
+    pending_unit_count: int = 0
     progress_pct: int
 
 

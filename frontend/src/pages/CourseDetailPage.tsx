@@ -63,6 +63,20 @@ export default function CourseDetailPage() {
             <span className="text-2xl font-headline font-bold text-primary">{course.progress_pct}%</span>
           </div>
 
+          {(course.pending_unit_count ?? 0) > 0 && (
+            <div className="inline-flex items-center gap-2 bg-secondary/10 text-secondary px-3 py-1.5 border border-secondary/30">
+              <span
+                className="material-symbols-outlined text-base"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                hourglass_top
+              </span>
+              <span className="text-[10px] font-mono uppercase tracking-widest">
+                {course.pending_unit_count} на проверке
+              </span>
+            </div>
+          )}
+
           {showHours && totalHours > 0 && (
             <div className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant">
               ⏱ ~{totalHours} часов суммарно

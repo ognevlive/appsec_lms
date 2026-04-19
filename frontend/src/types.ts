@@ -142,6 +142,7 @@ export interface ModuleItem {
   is_locked: boolean;
   unit_count: number;
   completed_unit_count: number;
+  pending_unit_count?: number;
   units: UnitItem[];
 }
 
@@ -155,6 +156,7 @@ export interface CourseItem {
   module_count: number;
   unit_count: number;
   completed_unit_count: number;
+  pending_unit_count?: number;
   progress_pct: number;
 }
 

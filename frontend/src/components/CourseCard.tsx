@@ -8,6 +8,7 @@ interface Props {
 export default function CourseCard({ course }: Props) {
   const icon = (course.config?.icon as string) || 'school';
   const progression = (course.config?.progression as string) || 'free';
+  const pending = course.pending_unit_count ?? 0;
   return (
     <Link
       to={`/courses/${course.slug}`}
@@ -26,9 +27,22 @@ export default function CourseCard({ course }: Props) {
       </div>
       <p className="text-sm text-on-surface-variant line-clamp-2 mb-4">{course.description}</p>
       <div className="space-y-1.5">
-        <div className="flex justify-between text-[10px] font-mono uppercase tracking-widest">
+        <div className="flex justify-between items-center text-[10px] font-mono uppercase tracking-widest">
           <span className="text-on-surface-variant">Прогресс</span>
-          <span className="text-primary">{course.completed_unit_count}/{course.unit_count}</span>
+          <div className="flex items-center gap-2">
+            {pending > 0 && (
+              <span className="inline-flex items-center gap-1 bg-secondary/10 text-secondary px-1.5 py-0.5">
+                <span
+                  className="material-symbols-outlined text-[10px]"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  hourglass_top
+                </span>
+                {pending} на проверке
+              </span>
+            )}
+            <span className="text-primary">{course.completed_unit_count}/{course.unit_count}</span>
+          </div>
         </div>
         <div className="h-1.5 bg-surface-container-high">
           <div className="h-full bg-primary transition-all duration-500" style={{ width: `${course.progress_pct}%` }} />

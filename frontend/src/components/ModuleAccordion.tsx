@@ -16,6 +16,7 @@ export default function ModuleAccordion({ module, defaultOpen }: Props) {
     ? Math.round((module.completed_unit_count / module.unit_count) * 100)
     : 0;
 
+  const pending = module.pending_unit_count ?? 0;
   const icon = (module.config?.icon as string) || 'folder';
 
   return (
@@ -41,6 +42,20 @@ export default function ModuleAccordion({ module, defaultOpen }: Props) {
               : `${module.completed_unit_count}/${module.unit_count} выполнено · ${pct}%`}
           </div>
         </div>
+        {!module.is_locked && pending > 0 && (
+          <span
+            className="inline-flex items-center gap-1 bg-secondary/10 text-secondary px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-widest mr-2"
+            title="Заданий на проверке"
+          >
+            <span
+              className="material-symbols-outlined text-[10px]"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              hourglass_top
+            </span>
+            {pending}
+          </span>
+        )}
         {!module.is_locked && (
           <span className="material-symbols-outlined text-on-surface-variant">
             {open ? 'expand_less' : 'expand_more'}

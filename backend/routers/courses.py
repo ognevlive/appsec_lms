@@ -29,18 +29,22 @@ async def _user_statuses(user_id: int, db: AsyncSession) -> dict[int, str]:
     return statuses
 
 
-def _course_agg(course: Course, statuses: dict[int, str]) -> tuple[int, int, int]:
-    """Return (module_count, unit_count_required, completed_unit_count_required)."""
+def _course_agg(course: Course, statuses: dict[int, str]) -> tuple[int, int, int, int]:
+    """Return (module_count, unit_count_required, completed, pending) for required units."""
     module_count = len(course.modules)
     unit_count = 0
     completed = 0
+    pending = 0
     for m in course.modules:
         for u in m.units:
             if u.is_required:
                 unit_count += 1
-                if statuses.get(u.task_id) == "success":
+                st = statuses.get(u.task_id)
+                if st == "success":
                     completed += 1
-    return module_count, unit_count, completed
+                elif st == "pending":
+                    pending += 1
+    return module_count, unit_count, completed, pending
 
 
 def _build_unit_out(mu: ModuleUnit, statuses: dict[int, str]) -> UnitOut:
@@ -66,6 +70,7 @@ def _build_module_out(course: Course, module: Module, statuses: dict[int, str]) 
     units = [_build_unit_out(mu, statuses) for mu in module.units]
     required = [u for u in units if u.is_required]
     completed = sum(1 for u in required if u.user_status == "success")
+    pending = sum(1 for u in required if u.user_status == "pending")
     return ModuleOut(
         id=module.id,
         title=module.title,
@@ -77,6 +82,7 @@ def _build_module_out(course: Course, module: Module, statuses: dict[int, str]) 
         is_locked=is_module_locked(course, module, statuses),
         unit_count=len(required),
         completed_unit_count=completed,
+        pending_unit_count=pending,
         units=units,
     )
 
@@ -106,7 +112,7 @@ async def list_courses(
     statuses = await _user_statuses(user.id, db)
     out: list[CourseOut] = []
     for c in courses:
-        module_count, unit_count, completed = _course_agg(c, statuses)
+        module_count, unit_count, completed, pending = _course_agg(c, statuses)
         pct = round(completed / unit_count * 100) if unit_count else 0
         out.append(CourseOut(
             id=c.id,
@@ -118,6 +124,7 @@ async def list_courses(
             module_count=module_count,
             unit_count=unit_count,
             completed_unit_count=completed,
+            pending_unit_count=pending,
             progress_pct=pct,
         ))
     return out
@@ -140,7 +147,7 @@ async def get_course(
         raise HTTPException(status_code=404, detail="Course not found")
 
     statuses = await _user_statuses(user.id, db)
-    module_count, unit_count, completed = _course_agg(course, statuses)
+    module_count, unit_count, completed, pending = _course_agg(course, statuses)
     pct = round(completed / unit_count * 100) if unit_count else 0
 
     return CourseDetail(
@@ -153,6 +160,7 @@ async def get_course(
         module_count=module_count,
         unit_count=unit_count,
         completed_unit_count=completed,
+        pending_unit_count=pending,
         progress_pct=pct,
         modules=[_build_module_out(course, m, statuses) for m in course.modules],
     )
