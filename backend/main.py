@@ -14,7 +14,7 @@ from auth import hash_password
 from config import settings
 from database import async_session
 from models import User, UserRole
-from routers import admin, admin_content, auth_router, courses, ctf, gitlab_tasks, progress, quiz, tasks, tracks
+from routers import admin, admin_content, auth_router, courses, ctf, gitlab_tasks, progress, quiz, submissions, tasks, tracks
 from routers.gitlab_tasks import init_gitlab_client
 from services.scheduler import cleanup_expired_containers
 
@@ -92,6 +92,7 @@ app.include_router(courses.router)
 app.include_router(courses.modules_router)
 app.include_router(tracks.router)
 app.include_router(admin_content.router)
+app.include_router(submissions.router)
 
 
 @app.get("/api/health")
