@@ -8,6 +8,7 @@ import FormSelect from '../../components/FormSelect';
 import CtfForm from '../../components/admin/task-forms/CtfForm';
 import GitlabForm from '../../components/admin/task-forms/GitlabForm';
 import QuizForm from '../../components/admin/task-forms/QuizForm';
+import ReviewUploadForm from '../../components/admin/task-forms/ReviewUploadForm';
 import SshLabForm from '../../components/admin/task-forms/SshLabForm';
 import TheoryForm from '../../components/admin/task-forms/TheoryForm';
 import type { AdminTask, TaskType } from '../../types';
@@ -160,6 +161,8 @@ export default function TaskEditorPage() {
       />
 
       <TypeSpecificForm task={task} updateConfig={updateConfig} />
+
+      <ReviewUploadForm config={task.config || {}} update={updateConfig} />
     </div>
   );
 }
