@@ -56,7 +56,11 @@ class User(Base):
     role = Column(Enum(UserRole), default=UserRole.student, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    submissions = relationship("TaskSubmission", back_populates="user")
+    submissions = relationship(
+        "TaskSubmission",
+        back_populates="user",
+        foreign_keys="TaskSubmission.user_id",
+    )
     containers = relationship("ContainerInstance", back_populates="user")
 
 
@@ -91,9 +95,18 @@ class TaskSubmission(Base):
     status = Column(Enum(SubmissionStatus), default=SubmissionStatus.pending)
     details = Column(JSONB, default=dict)
     submitted_at = Column(DateTime(timezone=True), server_default=func.now())
+    reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    review_comment = Column(Text, nullable=True)
 
-    user = relationship("User", back_populates="submissions")
+    user = relationship("User", back_populates="submissions", foreign_keys=[user_id])
     task = relationship("Task", back_populates="submissions")
+    reviewer = relationship("User", foreign_keys=[reviewer_id])
+    files = relationship(
+        "SubmissionFile",
+        back_populates="submission",
+        cascade="all, delete-orphan",
+    )
 
 
 class Course(Base):
@@ -169,3 +182,22 @@ class ContainerInstance(Base):
 
     user = relationship("User", back_populates="containers")
     task = relationship("Task")
+
+
+class SubmissionFile(Base):
+    __tablename__ = "submission_files"
+
+    id = Column(Integer, primary_key=True)
+    submission_id = Column(
+        Integer,
+        ForeignKey("task_submissions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    filename = Column(String(255), nullable=False)
+    stored_path = Column(String(500), nullable=False)
+    size_bytes = Column(Integer, nullable=False)
+    content_type = Column(String(100), nullable=True)
+    uploaded_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    submission = relationship("TaskSubmission", back_populates="files")
