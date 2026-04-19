@@ -47,7 +47,23 @@ export default function ReviewUploadForm({
         <input
           type="checkbox"
           checked={fileEnabled}
-          onChange={(e) => patchFileUpload({ enabled: e.target.checked })}
+          onChange={(e) => {
+            if (e.target.checked) {
+              update({
+                file_upload: {
+                  enabled: true,
+                  max_files: fileUpload.max_files ?? 5,
+                  max_size_mb: fileUpload.max_size_mb ?? 20,
+                  allowed_ext: Array.isArray(fileUpload.allowed_ext) && fileUpload.allowed_ext.length
+                    ? fileUpload.allowed_ext
+                    : DEFAULT_EXT,
+                  required: !!fileUpload.required,
+                },
+              });
+            } else {
+              patchFileUpload({ enabled: false });
+            }
+          }}
         />
         <span>Разрешить загрузку файлов</span>
       </label>

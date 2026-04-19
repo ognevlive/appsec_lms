@@ -1,28 +1,37 @@
 import { useRef, useState } from 'react';
 
 interface Props {
-  maxFiles: number;
-  maxSizeMb: number;
-  allowedExt: string[];
-  required: boolean;
+  maxFiles?: number;
+  maxSizeMb?: number;
+  allowedExt?: string[];
+  required?: boolean;
   files: File[];
   onChange: (files: File[]) => void;
   disabled?: boolean;
 }
 
+const DEFAULT_EXT = ['pdf', 'png', 'jpg', 'zip', 'txt', 'md', 'docx', 'py', 'js', 'ts'];
+
 export default function FileUploader({
-  maxFiles, maxSizeMb, allowedExt, required, files, onChange, disabled,
+  maxFiles = 5,
+  maxSizeMb = 20,
+  allowedExt,
+  required = false,
+  files,
+  onChange,
+  disabled,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const accept = allowedExt.map((e) => `.${e}`).join(',');
+  const exts = allowedExt && allowedExt.length ? allowedExt : DEFAULT_EXT;
+  const accept = exts.map((e) => `.${e}`).join(',');
 
   function validate(list: File[]): string | null {
     if (list.length > maxFiles) return `Максимум файлов: ${maxFiles}`;
     for (const f of list) {
       const ext = f.name.split('.').pop()?.toLowerCase() || '';
-      if (!allowedExt.includes(ext)) return `Расширение .${ext} не разрешено`;
+      if (!exts.includes(ext)) return `Расширение .${ext} не разрешено`;
       if (f.size > maxSizeMb * 1024 * 1024) return `Файл ${f.name} больше ${maxSizeMb} МБ`;
     }
     return null;
@@ -60,7 +69,7 @@ export default function FileUploader({
           Перетащите файлы или нажмите, чтобы выбрать
         </p>
         <p className="text-xs text-on-surface-variant/60 mt-1">
-          До {maxFiles} шт., макс {maxSizeMb} МБ; {allowedExt.join(', ')}
+          До {maxFiles} шт., макс {maxSizeMb} МБ; {exts.join(', ')}
           {required ? ' (обязательно)' : ''}
         </p>
         <input

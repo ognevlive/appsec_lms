@@ -38,9 +38,20 @@ export default function ChallengeDetailsPage() {
     api.mySubmissions(taskId).then(setSubmissions).catch(() => {});
   };
 
-  const uploadCfg = (task?.config?.file_upload ?? null) as
-    | { enabled: boolean; max_files: number; max_size_mb: number; allowed_ext: string[]; required: boolean }
-    | null;
+  const DEFAULT_EXT = ['pdf', 'png', 'jpg', 'zip', 'txt', 'md', 'docx', 'py', 'js', 'ts'];
+  const rawUpload = task?.config?.file_upload as
+    | { enabled?: boolean; max_files?: number; max_size_mb?: number; allowed_ext?: string[]; required?: boolean }
+    | null
+    | undefined;
+  const uploadCfg = rawUpload && rawUpload.enabled
+    ? {
+        enabled: true,
+        max_files: rawUpload.max_files ?? 5,
+        max_size_mb: rawUpload.max_size_mb ?? 20,
+        allowed_ext: rawUpload.allowed_ext?.length ? rawUpload.allowed_ext : DEFAULT_EXT,
+        required: !!rawUpload.required,
+      }
+    : null;
   const answerCfg = (task?.config?.answer_text ?? { enabled: false, required: false }) as
     { enabled: boolean; required: boolean };
   const isManual = task?.config?.review_mode === 'manual';
