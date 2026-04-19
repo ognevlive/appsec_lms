@@ -1,9 +1,13 @@
 """Unit tests for upload filename sanitization and validation helpers."""
 import pytest
 
-from services.uploads import sanitize_filename, validate_upload_config
-
-pytestmark = pytest.mark.anyio
+from config import settings
+from services.uploads import (
+    absolute_stored_path,
+    sanitize_filename,
+    validate_file,
+    validate_upload_config,
+)
 
 
 def test_sanitize_strips_path_separators():
@@ -45,3 +49,37 @@ def test_validate_upload_config_too_many_files():
     cfg = {"file_upload": {"enabled": True, "required": False, "max_files": 2, "max_size_mb": 20, "allowed_ext": ["pdf"]}}
     with pytest.raises(ValueError, match="too_many_files"):
         validate_upload_config(cfg, file_count=3, total_size_bytes=0)
+
+
+def test_absolute_stored_path_rejects_traversal(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "uploads_dir", str(tmp_path))
+    with pytest.raises(ValueError, match="escapes"):
+        absolute_stored_path("../../etc/passwd")
+
+
+def test_absolute_stored_path_rejects_absolute(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "uploads_dir", str(tmp_path))
+    with pytest.raises(ValueError, match="absolute"):
+        absolute_stored_path("/etc/passwd")
+
+
+def test_absolute_stored_path_allows_valid(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "uploads_dir", str(tmp_path))
+    result = absolute_stored_path("123/file.pdf")
+    assert str(result).startswith(str(tmp_path.resolve()))
+    assert result.name == "file.pdf"
+
+
+def test_validate_upload_config_rejects_disallowed_ext():
+    cfg = {"file_upload": {"enabled": True, "required": False, "max_files": 5, "max_size_mb": 20, "allowed_ext": ["pdf"]}}
+    with pytest.raises(ValueError, match="extension not allowed"):
+        validate_file(cfg, "malware.exe")
+
+
+def test_max_files_at_limit():
+    cfg = {"file_upload": {"enabled": True, "required": False, "max_files": 3, "max_size_mb": 20, "allowed_ext": ["pdf"]}}
+    # exactly max_files passes
+    validate_upload_config(cfg, file_count=3, total_size_bytes=0)
+    # max_files + 1 raises
+    with pytest.raises(ValueError, match="too_many_files"):
+        validate_upload_config(cfg, file_count=4, total_size_bytes=0)
