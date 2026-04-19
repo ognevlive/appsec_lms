@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { api } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
@@ -21,6 +23,7 @@ const adminItems: SidebarItem[] = [
   { to: '/admin/users', icon: 'group', label: 'Пользователи' },
   { to: '/admin/courses', icon: 'school', label: 'Курсы' },
   { to: '/admin/tasks', icon: 'task_alt', label: 'Таски' },
+  { to: '/admin/review', icon: 'rate_review', label: 'Проверка работ' },
   { to: '/admin/results', icon: 'bug_report', label: 'Результаты' },
   { to: '/admin/containers', icon: 'dns', label: 'Контейнеры' },
 ];
@@ -28,6 +31,23 @@ const adminItems: SidebarItem[] = [
 export default function Sidebar({ variant }: SidebarProps) {
   const { logout } = useAuth();
   const items = variant === 'student' ? studentItems : adminItems;
+  const [reviewCount, setReviewCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (variant !== 'admin') return;
+    let stopped = false;
+    const load = () =>
+      api
+        .getReviewQueueCount()
+        .then((r) => !stopped && setReviewCount(r.count))
+        .catch(() => {});
+    load();
+    const id = setInterval(load, 30000);
+    return () => {
+      stopped = true;
+      clearInterval(id);
+    };
+  }, [variant]);
 
   const itemClass = (isActive: boolean) =>
     `flex items-center gap-3 px-4 py-3 transition-all duration-150 ${
@@ -64,7 +84,12 @@ export default function Sidebar({ variant }: SidebarProps) {
                 >
                   {item.icon}
                 </span>
-                <span className="font-body font-medium text-sm">{item.label}</span>
+                <span className="font-body font-medium text-sm flex-1">{item.label}</span>
+                {item.to === '/admin/review' && reviewCount > 0 && (
+                  <span className="ml-auto bg-primary text-on-primary text-[10px] rounded-full px-2 py-0.5">
+                    {reviewCount}
+                  </span>
+                )}
               </>
             )}
           </NavLink>
