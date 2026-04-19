@@ -182,3 +182,55 @@ class GitLabTaskInfo(BaseModel):
     repo_url: str
     username: str
     password: str
+
+
+# --- Submissions (generic, with files) ---
+class SubmissionFileOut(BaseModel):
+    id: int
+    filename: str
+    size_bytes: int
+    content_type: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class SubmissionDetail(BaseModel):
+    id: int
+    user_id: int
+    task_id: int
+    status: SubmissionStatus
+    details: dict
+    submitted_at: datetime
+    reviewer_id: int | None = None
+    reviewed_at: datetime | None = None
+    review_comment: str | None = None
+    files: list[SubmissionFileOut] = []
+
+    class Config:
+        from_attributes = True
+
+
+# --- Admin review ---
+class ReviewQueueItem(BaseModel):
+    submission_id: int
+    task_id: int
+    task_title: str
+    user_id: int
+    username: str
+    user_full_name: str
+    submitted_at: datetime
+    course_id: int | None = None
+    course_title: str | None = None
+
+
+class ReviewQueueResponse(BaseModel):
+    items: list[ReviewQueueItem]
+    total: int
+    page: int
+    per_page: int
+
+
+class ReviewVerdict(BaseModel):
+    status: SubmissionStatus  # success | fail
+    comment: str = ""
