@@ -13,7 +13,7 @@ interface SidebarItem {
 
 const studentItems: SidebarItem[] = [
   { to: '/courses', icon: 'school', label: 'Курсы' },
-  { to: '/challenges', icon: 'security', label: 'Уязвимости' },
+  { to: '/challenges', icon: 'security', label: 'Задания' },
   { to: '/my-results', icon: 'analytics', label: 'Мои результаты' },
 ];
 
