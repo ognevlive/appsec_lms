@@ -219,4 +219,54 @@ export const api = {
         .then(r => r.json());
     },
   },
+
+  submitTask: async (taskId: number, form: FormData) => {
+    const token = getToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const resp = await fetch(`${API_BASE}/submissions/${taskId}`, {
+      method: 'POST',
+      body: form,
+      headers,
+    });
+    if (resp.status === 401) {
+      clearToken();
+      window.location.href = '/login';
+      throw new Error('Unauthorized');
+    }
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      throw new Error(body.detail || `HTTP ${resp.status}`);
+    }
+    return resp.json();
+  },
+
+  getSubmission: (id: number) => request<any>(`/submissions/${id}`),
+
+  // NOTE: reuses existing api.mySubmissions(taskId) — the backend endpoint
+  // now returns SubmissionDetail with files and review fields.
+
+  fileDownloadUrl: (submissionId: number, fileId: number, isAdmin = false) =>
+    isAdmin
+      ? `${API_BASE}/admin/submissions/${submissionId}/files/${fileId}`
+      : `${API_BASE}/submissions/${submissionId}/files/${fileId}`,
+
+  // Admin review
+  getReviewQueue: (params: { course_id?: number; user_id?: number; task_id?: number; page?: number; per_page?: number } = {}) => {
+    const q = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) q.set(k, String(v));
+    });
+    return request<any>(`/admin/review/queue${q.toString() ? `?${q}` : ''}`);
+  },
+
+  getReviewQueueCount: () => request<{ count: number }>('/admin/review/queue/count'),
+
+  getAdminSubmission: (id: number) => request<any>(`/admin/submissions/${id}`),
+
+  reviewSubmission: (id: number, status: 'success' | 'fail', comment: string) =>
+    request<any>(`/admin/submissions/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ status, comment }),
+    }),
 };
