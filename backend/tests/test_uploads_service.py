@@ -72,7 +72,7 @@ def test_absolute_stored_path_allows_valid(tmp_path, monkeypatch):
 
 def test_validate_upload_config_rejects_disallowed_ext():
     cfg = {"file_upload": {"enabled": True, "required": False, "max_files": 5, "max_size_mb": 20, "allowed_ext": ["pdf"]}}
-    with pytest.raises(ValueError, match="extension not allowed"):
+    with pytest.raises(ValueError, match="ext_not_allowed"):
         validate_file(cfg, "malware.exe")
 
 

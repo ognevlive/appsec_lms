@@ -73,7 +73,7 @@ def validate_file(task_config: dict, filename: str) -> None:
     ext = sanitized.rsplit(".", 1)[-1].lower() if "." in sanitized else ""
     allowed = _allowed_ext(cfg)
     if ext not in allowed:
-        raise ValueError(f"extension not allowed: {ext}")
+        raise ValueError(f"ext_not_allowed:{ext}")
 
 
 async def save_submission_files(
@@ -100,7 +100,7 @@ async def save_submission_files(
             original = sanitize_filename(upload.filename or "file")
             ext = original.rsplit(".", 1)[-1].lower() if "." in original else ""
             if ext not in allowed:
-                raise ValueError(f"extension not allowed: {ext}")
+                raise ValueError(f"ext_not_allowed:{ext}")
 
             stored_name = f"{secrets.token_hex(8)}_{original}"
             dst = sub_dir / stored_name
@@ -110,7 +110,7 @@ async def save_submission_files(
                 while chunk := upload.file.read(_CHUNK_SIZE):
                     written += len(chunk)
                     if written > max_bytes:
-                        raise ValueError(f"file too large: {original}")
+                        raise ValueError(f"file_too_large:{original}")
                     fp.write(chunk)
 
             stored_path = f"{submission.id}/{stored_name}"
