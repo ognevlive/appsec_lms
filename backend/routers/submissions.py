@@ -110,8 +110,14 @@ async def create_submission(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    is_manual = review_mode == "manual"
-    # Guard: auto mode only supports quiz tasks via this endpoint.
+    # Auto mode only supports quiz via this endpoint. For non-quiz tasks that
+    # expose uploads or a text answer, the admin implicitly wants manual review
+    # even if review_mode wasn't set — this is the only sensible path.
+    answer_enabled = bool(answer_cfg.get("enabled"))
+    is_manual = (
+        review_mode == "manual"
+        or (task.type != TaskType.quiz and (uploads_enabled or answer_enabled))
+    )
     if not is_manual and task.type != TaskType.quiz:
         raise HTTPException(status_code=400, detail="auto_unsupported_task_type")
 
